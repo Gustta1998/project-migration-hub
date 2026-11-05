@@ -103,7 +103,7 @@ export function AberturaForm({ posto, onVoltar, onConfirmar }: Props) {
       </div>
 
       {/* Seções */}
-      <div className="grid divide-y divide-border lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.25fr)] lg:divide-x lg:divide-y-0">
+      <div className="grid divide-y divide-border lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)_minmax(0,1.2fr)] lg:divide-x lg:divide-y-0">
         {/* Frentista */}
         <section className="p-6 sm:p-7">
           <SecaoTitulo icon={<UserRound className="h-4 w-4" />} titulo="Informações do frentista" />
@@ -156,7 +156,7 @@ export function AberturaForm({ posto, onVoltar, onConfirmar }: Props) {
                       aria-checked={ativo}
                       name={t.codigo === "M" ? "turno" : undefined}
                       onClick={() => set("turno", t.codigo)}
-                      className={`flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-bold transition-all ${
+                      className={`flex items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-sm font-bold transition-all ${
                         ativo
                           ? "bg-card text-primary shadow-card"
                           : "text-muted-foreground hover:text-foreground"
