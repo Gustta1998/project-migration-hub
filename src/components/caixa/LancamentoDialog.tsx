@@ -16,6 +16,7 @@ import {
   type TipoLancamento,
 } from "@/lib/caixa";
 import { CATEGORIA_TILE, TIPO_ICON } from "./icons";
+import { NotaLancamentoDialog } from "./NotaLancamentoDialog";
 
 interface Props {
   tipo: TipoLancamento | null;
@@ -40,6 +41,9 @@ export function LancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   }, [tipo]);
 
   if (!tipo) return null;
+  if (tipo === "notas" || tipo === "cliente_outras_notas") {
+    return <NotaLancamentoDialog tipo={tipo} precos={precos} onClose={onClose} onSave={onSave} />;
+  }
   const info = tipoInfo(tipo);
   const Icon = TIPO_ICON[tipo];
   const isVenda = info.categoria === "venda";
