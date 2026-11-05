@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { Droplet, Inbox, Trash2, TrendingUp } from "lucide-react";
 import {
+  filtrarHistorico,
+  FILTROS_HISTORICO,
   formatBRL,
   formatDataHora,
   formatLitros,
   litrosDe,
   tipoInfo,
   TIPOS,
-  type Categoria,
+  type FiltroHistorico,
   type Lancamento,
   type Precos,
   type Resumo,
@@ -112,13 +114,6 @@ function FuelCard({
   );
 }
 
-const FILTROS: { id: "todos" | Categoria; label: string }[] = [
-  { id: "todos", label: "Todos" },
-  { id: "venda", label: "Vendas" },
-  { id: "desconto", label: "Descontos" },
-  { id: "saida", label: "Saídas" },
-];
-
 function Historico({
   lancamentos,
   precos,
@@ -128,19 +123,15 @@ function Historico({
   precos: Precos;
   onRemove: (id: string) => void;
 }) {
-  const [filtro, setFiltro] = useState<(typeof FILTROS)[number]["id"]>("todos");
-  const lista = useMemo(
-    () =>
-      lancamentos.filter((l) => filtro === "todos" || tipoInfo(l.tipo).categoria === filtro),
-    [lancamentos, filtro],
-  );
+  const [filtro, setFiltro] = useState<FiltroHistorico>("todos");
+  const lista = useMemo(() => filtrarHistorico(lancamentos, filtro), [lancamentos, filtro]);
 
   return (
     <div className="flex min-h-0 flex-col rounded-2xl border border-ink-border bg-ink-2/40">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-border px-4 py-3">
         <h3 className="font-display text-lg font-bold">Histórico</h3>
         <div className="flex gap-1 rounded-full bg-ink-foreground/[0.06] p-1">
-          {FILTROS.map((f) => (
+          {FILTROS_HISTORICO.map((f) => (
             <button
               key={f.id}
               type="button"

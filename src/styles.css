@@ -228,3 +228,51 @@
     box-shadow: 0 0 0 5px color-mix(in oklab, var(--success) 0%, transparent);
   }
 }
+
+/* Abertura do caixa */
+@utility animate-fade {
+  animation: fade-in 0.25s ease both;
+}
+@utility animate-pop {
+  animation: pop-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+@utility animate-draw {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: draw 0.45s 0.25s ease-out forwards;
+}
+@utility animate-progress {
+  animation: progress 1.6s linear both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

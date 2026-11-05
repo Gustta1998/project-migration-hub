@@ -28,7 +28,7 @@ export function TurnoCard({ posto, frentista, turno, data, trocoInicial, precos 
               Caixa aberto
             </h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Turno da {turno.toLowerCase()} · {data}
+              {turno} · {data}
             </p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3.5 py-1.5 text-xs font-bold text-success">

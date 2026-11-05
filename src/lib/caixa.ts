@@ -192,3 +192,29 @@ export const NOTAS: NotaAutorizada[] = [
   { id: "n2", cliente: "Transportes Lima", turno: "Plantão da manhã", responsavel: "Ana Lima", combustivel: "Gasolina", litros: 45, status: "autorizada" },
   { id: "n3", cliente: "Prefeitura Municipal", turno: "Plantão da tarde", responsavel: "João Pedro", combustivel: "Diesel", litros: 120, status: "pendente" },
 ];
+
+/** Filtros do histórico de lançamentos. */
+export type FiltroHistorico = "todos" | "vendas" | "descontos" | "sangrias" | "notas";
+
+export const FILTROS_HISTORICO: { id: FiltroHistorico; label: string }[] = [
+  { id: "todos", label: "Todos" },
+  { id: "vendas", label: "Vendas" },
+  { id: "descontos", label: "Descontos" },
+  { id: "sangrias", label: "Sangrias" },
+  { id: "notas", label: "Notas" },
+];
+
+export function filtrarHistorico(lancamentos: Lancamento[], filtro: FiltroHistorico): Lancamento[] {
+  switch (filtro) {
+    case "todos":
+      return lancamentos;
+    case "vendas":
+      return lancamentos.filter((l) => tipoInfo(l.tipo).categoria === "venda");
+    case "descontos":
+      return lancamentos.filter((l) => l.tipo === "descontos");
+    case "sangrias":
+      return lancamentos.filter((l) => l.tipo === "sangria");
+    case "notas":
+      return lancamentos.filter((l) => l.tipo === "notas" || l.tipo === "cliente_outras_notas");
+  }
+}

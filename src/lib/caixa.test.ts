@@ -3,6 +3,8 @@ import {
   calcularResumo,
   confirmarAbastecimento,
   desfazerAbastecimento,
+  filtrarHistorico,
+  FILTROS_HISTORICO,
   LANCAMENTOS_INICIAIS,
   NOTAS,
   notasEmAberto,
@@ -52,4 +54,25 @@ describe("notas autorizadas", () => {
     const volta = desfazerAbastecimento(conf, "n2");
     expect(notasEmAberto(volta).map((n) => n.id)).toContain("n2");
   });
+});
+
+describe("filtros do histórico", () => {
+  const ls: Lancamento[] = [
+    { id: "v", tipo: "dinheiro", valor: 10, combustivel: "gasolina", criadoEm: "2026-11-05T01:00:00" },
+    { id: "n", tipo: "notas", valor: 20, combustivel: "diesel", criadoEm: "2026-11-05T01:00:00" },
+    { id: "o", tipo: "cliente_outras_notas", valor: 30, combustivel: "diesel", criadoEm: "2026-11-05T01:00:00" },
+    { id: "d", tipo: "descontos", valor: 5, criadoEm: "2026-11-05T01:00:00" },
+    { id: "s", tipo: "sangria", valor: 50, criadoEm: "2026-11-05T01:00:00" },
+    { id: "x", tipo: "despesas", valor: 8, criadoEm: "2026-11-05T01:00:00" },
+  ];
+  const ids = (f: Parameters<typeof filtrarHistorico>[1]) => filtrarHistorico(ls, f).map((l) => l.id);
+
+  it("oferece Todos, Vendas, Descontos, Sangrias e Notas", () => {
+    expect(FILTROS_HISTORICO.map((f) => f.label)).toEqual(["Todos", "Vendas", "Descontos", "Sangrias", "Notas"]);
+  });
+  it("Todos mostra tudo", () => expect(ids("todos")).toHaveLength(6));
+  it("Vendas mostra só recebimentos", () => expect(ids("vendas")).toEqual(["v", "n", "o"]));
+  it("Descontos mostra só descontos", () => expect(ids("descontos")).toEqual(["d"]));
+  it("Sangrias mostra só sangrias", () => expect(ids("sangrias")).toEqual(["s"]));
+  it("Notas mostra notas e notas de outros clientes", () => expect(ids("notas")).toEqual(["n", "o"]));
 });
