@@ -97,11 +97,11 @@ describe("lançamentos de notas e clientes outras notas", () => {
     },
   ];
 
-  it("inclui todas as notas em vendas e litros, mas não considera faturado/a prazo como recebido", () => {
+  it("inclui notas faturadas e a prazo no total do caixa, mantendo o indicador de não recebido", () => {
     const r = calcularResumo(lancamentos, TURNO.precos);
     expect(r.totalVendas).toBeCloseTo(259.35);
     expect(r.totalNaoRecebido).toBeCloseTo(222.9);
-    expect(r.total).toBeCloseTo(36.45);
+    expect(r.total).toBeCloseTo(259.35);
     expect(r.litrosGasolina).toBe(15);
     expect(r.litrosDiesel).toBe(20);
   });
