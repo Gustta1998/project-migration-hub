@@ -134,10 +134,10 @@ export function LancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
                     key={m}
                     type="button"
                     onClick={() => setModalidade(m)}
-                    className={`rounded-lg py-2 text-sm font-bold transition-colors ${
+                    className={`rounded-lg border-2 py-2 text-sm font-bold transition-colors ${
                       modalidade === m
-                        ? "bg-card text-foreground shadow-card"
-                        : "text-muted-foreground"
+                        ? "border-primary bg-primary/10 text-primary shadow-card"
+                        : "border-transparent text-muted-foreground hover:border-muted-foreground/40"
                     }`}
                   >
                     {m === "debito" ? "Débito" : "Crédito"}
