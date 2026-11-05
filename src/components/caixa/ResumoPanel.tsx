@@ -188,6 +188,12 @@ function Historico({
                       ? "Débito · "
                       : ""}
                   <span className="num">{formatDataHora(l.criadoEm)}</span>
+                  {l.tipo === "cliente_outras_notas" && l.modalidade === "prazo" && (
+                    <span className="font-bold text-warning-foreground"> · A receber</span>
+                  )}
+                  {l.tipo === "notas" && (
+                    <span className="font-bold text-warning-foreground"> · Faturado</span>
+                  )}
                   {l.observacao && <> · {l.observacao}</>}
                 </p>
               </div>
