@@ -127,7 +127,7 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
   r.litrosDiesel = round(lancamentos
     .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "diesel")
     .reduce((acc, l) => acc + litrosExatos(l), 0), 3);
-  r.total = round(r.totalVendas - r.totalNaoRecebido - r.totalDescontos);
+  r.total = round(r.totalVendas - r.totalDescontos);
   return r;
 }
 
