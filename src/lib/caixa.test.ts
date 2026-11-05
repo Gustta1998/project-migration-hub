@@ -76,3 +76,40 @@ describe("filtros do histórico", () => {
   it("Sangrias mostra só sangrias", () => expect(ids("sangrias")).toEqual(["s"]));
   it("Notas mostra notas e notas de outros clientes", () => expect(ids("notas")).toEqual(["n", "o"]));
 });
+
+describe("lançamentos de notas e clientes outras notas", () => {
+  const iso = "2026-11-05T10:00:00";
+  const lancamentos: Lancamento[] = [
+    {
+      id: "nota", tipo: "notas", valor: 150, combustivel: "diesel",
+      litros: 20, precoLitro: 7.5, responsavel: "Maria",
+      destinoNota: "Secretaria de Saúde", criadoEm: iso,
+    },
+    {
+      id: "prazo", tipo: "cliente_outras_notas", valor: 72.9,
+      combustivel: "gasolina", litros: 10, precoLitro: 7.29,
+      responsavel: "João", modalidade: "prazo", criadoEm: iso,
+    },
+    {
+      id: "vista", tipo: "cliente_outras_notas", valor: 36.45,
+      combustivel: "gasolina", litros: 5, precoLitro: 7.29,
+      responsavel: "Ana", modalidade: "avista", criadoEm: iso,
+    },
+  ];
+
+  it("inclui todas as notas em vendas e litros, mas não considera faturado/a prazo como recebido", () => {
+    const r = calcularResumo(lancamentos, TURNO.precos);
+    expect(r.totalVendas).toBeCloseTo(259.35);
+    expect(r.totalNaoRecebido).toBeCloseTo(222.9);
+    expect(r.total).toBeCloseTo(36.45);
+    expect(r.litrosGasolina).toBe(15);
+    expect(r.litrosDiesel).toBe(20);
+  });
+
+  it("preserva identificação, destino e pagamento dos lançamentos", () => {
+    expect(lancamentos[0].destinoNota).toBe("Secretaria de Saúde");
+    expect(lancamentos[0].responsavel).toBe("Maria");
+    expect(lancamentos[1].modalidade).toBe("prazo");
+    expect(filtrarHistorico(lancamentos, "notas")).toHaveLength(3);
+  });
+});
