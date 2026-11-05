@@ -103,7 +103,7 @@ export function AberturaForm({ posto, onVoltar, onConfirmar }: Props) {
       </div>
 
       {/* Seções */}
-      <div className="grid divide-y divide-border lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.85fr)_minmax(0,1.25fr)] lg:divide-x lg:divide-y-0">
+      <div className="grid divide-y divide-border lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.25fr)] lg:divide-x lg:divide-y-0">
         {/* Frentista */}
         <section className="p-6 sm:p-7">
           <SecaoTitulo icon={<UserRound className="h-4 w-4" />} titulo="Informações do frentista" />
@@ -291,7 +291,7 @@ function Campo({
   const Tag = grupo ? "div" : "label";
   return (
     <Tag className={`block min-w-0 ${className}`}>
-      <span className="eyebrow block truncate text-muted-foreground">{label}</span>
+      <span className="eyebrow block leading-snug text-muted-foreground">{label}</span>
       <div className="mt-1.5">{children}</div>
       {erro && <span className="animate-fade mt-1 block text-xs font-semibold text-danger">{erro}</span>}
     </Tag>
