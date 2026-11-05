@@ -11,3 +11,4 @@
 
 ## Project rules
 - Cash-register math (totals, liters, per-payment breakdown) lives only in `src/lib/caixa.ts` and is covered by `src/lib/caixa.test.ts`; UI components under `src/components/caixa/` only display it, so numbers stay consistent everywhere.
+- Shift opening (validation, turnos, local persistence of the open caixa) lives in `src/lib/abertura.ts` with tests in `src/lib/abertura.test.ts`; `/` shows the opening flow until a caixa session exists, then the PDV, so the PDV never runs without opening data.
