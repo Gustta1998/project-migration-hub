@@ -120,7 +120,7 @@ export function AberturaForm({ posto, onVoltar, onConfirmar }: Props) {
               />
             </Campo>
 
-            <Campo label="Data">
+            <Campo label="Data" grupo>
               <div className="flex items-center gap-2 rounded-xl border border-input bg-secondary px-3.5 py-2.5 text-[15px] font-semibold text-secondary-foreground num">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 {hoje || "—"}
@@ -140,7 +140,7 @@ export function AberturaForm({ posto, onVoltar, onConfirmar }: Props) {
               </Prefixado>
             </Campo>
 
-            <Campo label="Turno de trabalho" erro={erros.turno} className="col-span-2">
+            <Campo label="Turno de trabalho" erro={erros.turno} className="col-span-2" grupo>
               <div
                 role="radiogroup"
                 aria-label="Turno de trabalho"
@@ -279,19 +279,22 @@ function Campo({
   label,
   erro,
   className = "",
+  grupo = false,
   children,
 }: {
   label: string;
   erro?: string | undefined;
   className?: string;
+  grupo?: boolean;
   children: ReactNode;
 }) {
+  const Tag = grupo ? "div" : "label";
   return (
-    <label className={`block min-w-0 ${className}`}>
+    <Tag className={`block min-w-0 ${className}`}>
       <span className="eyebrow block truncate text-muted-foreground">{label}</span>
       <div className="mt-1.5">{children}</div>
       {erro && <span className="animate-fade mt-1 block text-xs font-semibold text-danger">{erro}</span>}
-    </label>
+    </Tag>
   );
 }
 

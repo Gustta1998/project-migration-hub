@@ -1,22 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/caixa/AppHeader";
 import { TurnoCard } from "@/components/caixa/TurnoCard";
 import { ActionGrid } from "@/components/caixa/ActionGrid";
 import { NotasAutorizadas } from "@/components/caixa/NotasAutorizadas";
 import { ResumoPanel } from "@/components/caixa/ResumoPanel";
 import { LancamentoDialog } from "@/components/caixa/LancamentoDialog";
+import { AberturaCaixa } from "@/components/caixa/abertura/AberturaCaixa";
 import {
   calcularResumo,
   confirmarAbastecimento,
   desfazerAbastecimento,
-  LANCAMENTOS_INICIAIS,
   NOTAS,
   TURNO,
   type Lancamento,
   type NotaAutorizada,
   type TipoLancamento,
 } from "@/lib/caixa";
+import {
+  carregarSessao,
+  salvarSessao,
+  turnoInfo,
+  type AberturaCaixa as Abertura,
+  type SessaoCaixa,
+} from "@/lib/abertura";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,10 +46,43 @@ export const Route = createFileRoute("/")({
 });
 
 function Caixa() {
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>(LANCAMENTOS_INICIAIS);
-  const [notas, setNotas] = useState<NotaAutorizada[]>(NOTAS);
+  const [carregado, setCarregado] = useState(false);
+  const [sessao, setSessao] = useState<SessaoCaixa | null>(null);
+
+  useEffect(() => {
+    setSessao(carregarSessao());
+    setCarregado(true);
+  }, []);
+
+  useEffect(() => {
+    if (carregado && sessao) salvarSessao(sessao);
+  }, [carregado, sessao]);
+
+  const abrir = useCallback((abertura: Abertura) => {
+    setSessao({ versao: 1, abertura, lancamentos: [], notas: NOTAS });
+  }, []);
+
+  if (!carregado) return <div className="min-h-screen" />;
+  if (!sessao) return <AberturaCaixa posto={TURNO.posto} onAberto={abrir} />;
+  return <Pdv sessao={sessao} setSessao={setSessao} />;
+}
+
+function Pdv({
+  sessao,
+  setSessao,
+}: {
+  sessao: SessaoCaixa;
+  setSessao: React.Dispatch<React.SetStateAction<SessaoCaixa | null>>;
+}) {
+  const { abertura, lancamentos, notas } = sessao;
+  const precos = abertura.precos;
   const [tipoAberto, setTipoAberto] = useState<TipoLancamento | null>(null);
-  const resumo = useMemo(() => calcularResumo(lancamentos, TURNO.precos), [lancamentos]);
+  const resumo = useMemo(() => calcularResumo(lancamentos, precos), [lancamentos, precos]);
+
+  const setLancamentos = (fn: (ls: Lancamento[]) => Lancamento[]) =>
+    setSessao((s) => (s ? { ...s, lancamentos: fn(s.lancamentos) } : s));
+  const setNotas = (fn: (ns: NotaAutorizada[]) => NotaAutorizada[]) =>
+    setSessao((s) => (s ? { ...s, notas: fn(s.notas) } : s));
 
   return (
     <div className="min-h-screen">
@@ -52,18 +92,18 @@ function Caixa() {
         <div className="flex min-w-0 flex-col gap-5">
           <TurnoCard
             posto={TURNO.posto}
-            frentista={TURNO.frentista}
-            turno={TURNO.turno}
-            data={TURNO.data}
-            trocoInicial={TURNO.trocoInicial}
-            precos={TURNO.precos}
+            frentista={abertura.frentista}
+            turno={turnoInfo(abertura.turno).descricao}
+            data={abertura.data}
+            trocoInicial={abertura.trocoInicial}
+            precos={precos}
           />
           <ActionGrid onSelect={setTipoAberto} />
           <NotasAutorizadas
             notas={notas}
             onConfirmar={(id) =>
               setNotas((ns) =>
-                confirmarAbastecimento(ns, id, TURNO.frentista, new Date().toISOString()),
+                confirmarAbastecimento(ns, id, abertura.frentista, new Date().toISOString()),
               )
             }
             onDesfazer={(id) => setNotas((ns) => desfazerAbastecimento(ns, id))}
@@ -74,8 +114,8 @@ function Caixa() {
           <ResumoPanel
             resumo={resumo}
             lancamentos={lancamentos}
-            precos={TURNO.precos}
-            trocoInicial={TURNO.trocoInicial}
+            precos={precos}
+            trocoInicial={abertura.trocoInicial}
             onRemove={(id) => setLancamentos((ls) => ls.filter((l) => l.id !== id))}
           />
         </div>
@@ -83,7 +123,7 @@ function Caixa() {
 
       <LancamentoDialog
         tipo={tipoAberto}
-        precos={TURNO.precos}
+        precos={precos}
         onClose={() => setTipoAberto(null)}
         onSave={(l) => {
           setLancamentos((ls) => [
