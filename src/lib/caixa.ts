@@ -115,12 +115,18 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
     }
   }
 
+  const litrosExatos = (l: Lancamento) =>
+    typeof l.litros === "number" && Number.isFinite(l.litros)
+      ? l.litros
+      : l.combustivel && precos[l.combustivel] > 0
+        ? l.valor / precos[l.combustivel]
+        : 0;
   r.litrosGasolina = round(lancamentos
     .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "gasolina")
-    .reduce((acc, l) => acc + litrosDe(l, precos), 0), 3);
+    .reduce((acc, l) => acc + litrosExatos(l), 0), 3);
   r.litrosDiesel = round(lancamentos
     .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "diesel")
-    .reduce((acc, l) => acc + litrosDe(l, precos), 0), 3);
+    .reduce((acc, l) => acc + litrosExatos(l), 0), 3);
   r.total = round(r.totalVendas - r.totalNaoRecebido - r.totalDescontos);
   return r;
 }
