@@ -43,7 +43,11 @@ export interface Lancamento {
   tipo: TipoLancamento;
   valor: number;
   combustivel?: Combustivel | undefined;
-  modalidade?: "debito" | "credito" | "avista" | undefined;
+  modalidade?: "debito" | "credito" | "avista" | "prazo" | undefined;
+  litros?: number | undefined;
+  precoLitro?: number | undefined;
+  responsavel?: string | undefined;
+  destinoNota?: string | undefined;
   criadoEm: string; // ISO
   observacao?: string | undefined;
 }
@@ -59,6 +63,7 @@ export interface Resumo {
   litrosGasolina: number;
   litrosDiesel: number;
   totalVendas: number;
+  totalNaoRecebido: number;
   totalDescontos: number;
   totalSaidas: number;
   total: number;
@@ -75,6 +80,7 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
     litrosGasolina: 0,
     litrosDiesel: 0,
     totalVendas: 0,
+    totalNaoRecebido: 0,
     totalDescontos: 0,
     totalSaidas: 0,
     total: 0,
@@ -90,6 +96,7 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
 
     if (info.categoria === "venda") {
       r.totalVendas += l.valor;
+      if (l.tipo === "notas" || l.modalidade === "prazo") r.totalNaoRecebido += l.valor;
       if (l.combustivel === "diesel") r.valorDiesel += l.valor;
       else if (l.combustivel === "gasolina") r.valorGasolina += l.valor;
       if (l.tipo === "cartoes") {
@@ -108,14 +115,22 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
     }
   }
 
-  r.litrosGasolina = precos.gasolina > 0 ? round(r.valorGasolina / precos.gasolina, 3) : 0;
-  r.litrosDiesel = precos.diesel > 0 ? round(r.valorDiesel / precos.diesel, 3) : 0;
-  r.total = round(r.totalVendas - r.totalDescontos);
+  r.litrosGasolina = round(lancamentos
+    .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "gasolina")
+    .reduce((acc, l) => acc + litrosDe(l, precos), 0), 3);
+  r.litrosDiesel = round(lancamentos
+    .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "diesel")
+    .reduce((acc, l) => acc + litrosDe(l, precos), 0), 3);
+  r.total = round(r.totalVendas - r.totalNaoRecebido - r.totalDescontos);
   return r;
 }
 
 export const litrosDe = (l: Lancamento, precos: Precos) =>
-  l.combustivel ? round(l.valor / precos[l.combustivel], 3) : 0;
+  typeof l.litros === "number" && Number.isFinite(l.litros)
+    ? round(l.litros, 3)
+    : l.combustivel && precos[l.combustivel] > 0
+      ? round(l.valor / precos[l.combustivel], 3)
+      : 0;
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 export const formatBRL = (n: number) => brl.format(n);
