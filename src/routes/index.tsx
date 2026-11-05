@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CheckCircle2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/caixa/AppHeader";
 import { TurnoCard } from "@/components/caixa/TurnoCard";
@@ -77,6 +78,12 @@ function Pdv({
   const { abertura, lancamentos, notas } = sessao;
   const precos = abertura.precos;
   const [tipoAberto, setTipoAberto] = useState<TipoLancamento | null>(null);
+  const [notaRegistrada, setNotaRegistrada] = useState(false);
+  useEffect(() => {
+    if (!notaRegistrada) return;
+    const timer = window.setTimeout(() => setNotaRegistrada(false), 1450);
+    return () => window.clearTimeout(timer);
+  }, [notaRegistrada]);
   const resumo = useMemo(() => calcularResumo(lancamentos, precos), [lancamentos, precos]);
 
   const setLancamentos = (fn: (ls: Lancamento[]) => Lancamento[]) =>
@@ -131,8 +138,19 @@ function Pdv({
             ...ls,
           ]);
           setTipoAberto(null);
+          if (l.tipo === "notas" || l.tipo === "cliente_outras_notas") {
+            setNotaRegistrada(true);
+          }
         }}
       />
+      {notaRegistrada && (
+        <div className="pointer-events-none fixed inset-0 z-[100] grid place-items-center bg-foreground/25 px-4">
+          <div role="status" className="animate-rise flex flex-col items-center gap-3 rounded-3xl border border-border bg-card px-10 py-8 text-center shadow-lift">
+            <CheckCircle2 className="h-14 w-14 text-success" />
+            <p className="font-display text-2xl font-bold">Registrado com sucesso!</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
