@@ -62,6 +62,9 @@ export interface Lancamento {
   /** Dados estruturados para o futuro relatório mensal de funcionários do gerente. */
   funcionario?: Funcionario | undefined;
   tipoDespesaFuncionario?: TipoDespesaFuncionario | undefined;
+  /** Despesa geral do posto, sem vínculo com funcionário. */
+  tipoDespesaGeral?: "outros" | undefined;
+  descricaoDespesa?: string | undefined;
   criadoEm: string; // ISO
   observacao?: string | undefined;
 }
