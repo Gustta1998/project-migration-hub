@@ -19,7 +19,7 @@ const campo = "mt-1.5 w-full rounded-xl border border-input bg-background px-3 p
 const icones = { vale: HandCoins, gasolina: Droplet, diesel: Droplet, dinheiro: Banknote };
 
 export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
-  const [funcionario, setFuncionario] = useState<Funcionario | "">("");
+  const [funcionario, setFuncionario] = useState<Funcionario | "OUTROS" | "">("");
   const [categoria, setCategoria] = useState<TipoDespesaFuncionario | "">("");
   const [valorTexto, setValorTexto] = useState("");
   const [litrosTexto, setLitrosTexto] = useState("");
@@ -40,7 +40,19 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!funcionario) return setErro("Selecione um funcionário.");
+    if (!funcionario) return setErro("Selecione um funcionário ou Outros.");
+    if (funcionario === "OUTROS") {
+      if (!observacao.trim()) return setErro("Descreva a despesa (ex.: cozinha, alimentação ou material).");
+      if (!Number.isFinite(valor) || valor <= 0) return setErro("Informe um valor válido maior que zero.");
+      onSave({
+        tipo: "despesas",
+        valor,
+        tipoDespesaGeral: "outros",
+        descricaoDespesa: observacao.trim(),
+        observacao: "Outros · " + observacao.trim(),
+      });
+      return;
+    }
     if (!categoria) return setErro("Selecione Vale, Gasolina, Diesel ou Dinheiro.");
     if (combustivel && (litros === null || !Number.isFinite(litros) || litros <= 0)) {
       return setErro("Informe a quantidade abastecida em litros.");
@@ -70,20 +82,20 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
           </span>
           <div>
             <DialogTitle className="font-display text-2xl font-bold">Despesas</DialogTitle>
-            <DialogDescription>Retiradas e abastecimentos de funcionários</DialogDescription>
+            <DialogDescription>Retiradas de funcionários e outras despesas do posto</DialogDescription>
           </div>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-5 px-6 py-5">
           <label className="block">
-            <span className="eyebrow text-muted-foreground">Funcionário</span>
+            <span className="eyebrow text-muted-foreground">Funcionário ou tipo de despesa</span>
             <div className="relative mt-1.5">
               <UserRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <select
                 required
                 value={funcionario}
                 onChange={(e) => {
-                  setFuncionario(e.target.value as Funcionario | "");
+                  setFuncionario(e.target.value as Funcionario | "OUTROS" | "");
                   setCategoria("");
                   setValorTexto("");
                   setLitrosTexto("");
@@ -91,13 +103,14 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
                 }}
                 className={campo + " mt-0 pl-9"}
               >
-                <option value="">Selecione um funcionário</option>
+                <option value="">Selecione um funcionário ou Outros</option>
                 {FUNCIONARIOS.map((nome) => <option key={nome} value={nome}>{nome}</option>)}
+                <option value="OUTROS">Outros — cozinha ou despesas do posto</option>
               </select>
             </div>
           </label>
 
-          {funcionario && (
+          {funcionario && funcionario !== "OUTROS" && (
             <div>
               <span className="eyebrow text-muted-foreground">O que o funcionário retirou?</span>
               <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -126,7 +139,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
             </div>
           )}
 
-          {categoria && (
+          {(categoria || funcionario === "OUTROS") && (
             <>
               {combustivel ? (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -149,7 +162,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
                 </div>
               ) : (
                 <label className="block">
-                  <span className="eyebrow text-muted-foreground">Valor de {categoria === "vale" ? "vale" : "dinheiro"}</span>
+                  <span className="eyebrow text-muted-foreground">Valor de {funcionario === "OUTROS" ? "outra despesa" : categoria === "vale" ? "vale" : "dinheiro"}</span>
                   <div className="mt-1.5 flex items-center rounded-2xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30">
                     <span className="font-display text-xl font-bold text-muted-foreground">R$</span>
                     <input
@@ -166,12 +179,13 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
               )}
 
               <label className="block">
-                <span className="eyebrow text-muted-foreground">Observação (opcional)</span>
+                <span className="eyebrow text-muted-foreground">{funcionario === "OUTROS" ? "Descrição da despesa (obrigatória)" : "Observação (opcional)"}</span>
                 <input
                   value={observacao}
+                  required={funcionario === "OUTROS"}
                   maxLength={160}
                   onChange={(e) => setObservacao(e.target.value)}
-                  placeholder="Informação adicional"
+                  placeholder={funcionario === "OUTROS" ? "Ex.: compras para cozinha, gás, materiais…" : "Informação adicional"}
                   className={campo}
                 />
               </label>
