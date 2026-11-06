@@ -145,3 +145,24 @@ describe("despesas de funcionários", () => {
     expect(r.total).toBe(0);
   });
 });
+
+describe("despesas gerais — Outros", () => {
+  it("registra gasto de cozinha sem atribuir a nenhum funcionário", () => {
+    const l: Lancamento = {
+      id: "cozinha-1",
+      tipo: "despesas",
+      tipoDespesaGeral: "outros",
+      descricaoDespesa: "Compras para a cozinha",
+      observacao: "Outros · Compras para a cozinha",
+      valor: 120,
+      criadoEm: "2026-11-06T11:30:00",
+    };
+    expect(l.funcionario).toBeUndefined();
+    expect(l.tipoDespesaFuncionario).toBeUndefined();
+    expect(l.tipoDespesaGeral).toBe("outros");
+    expect(l.descricaoDespesa).toBe("Compras para a cozinha");
+    const r = calcularResumo([l], TURNO.precos);
+    expect(r.totalSaidas).toBe(120);
+    expect(r.porTipo.despesas.valor).toBe(120);
+  });
+});
