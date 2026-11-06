@@ -1,4 +1,4 @@
-import { UserRound, Wallet } from "lucide-react";
+import { LockKeyhole, UserRound, Wallet } from "lucide-react";
 import { formatBRL, type Precos } from "@/lib/caixa";
 
 interface Props {
@@ -8,9 +8,10 @@ interface Props {
   data: string;
   trocoInicial: number;
   precos: Precos;
+  onFecharCaixa: () => void;
 }
 
-export function TurnoCard({ posto, frentista, turno, data, trocoInicial, precos }: Props) {
+export function TurnoCard({ posto, frentista, turno, data, trocoInicial, precos, onFecharCaixa }: Props) {
   return (
     <section className="animate-rise overflow-hidden rounded-3xl bg-hero text-ink-foreground shadow-lift">
       <div className="relative px-6 pb-6 pt-6 sm:px-7">
@@ -31,10 +32,20 @@ export function TurnoCard({ posto, frentista, turno, data, trocoInicial, precos 
               {turno} · {data}
             </p>
           </div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3.5 py-1.5 text-xs font-bold text-success">
-            <span className="pulse-dot h-2 w-2 rounded-full bg-success" />
-            Em operação
-          </span>
+          <div className="flex flex-col items-end gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3.5 py-1.5 text-xs font-bold text-success">
+              <span className="pulse-dot h-2 w-2 rounded-full bg-success" />
+              Em operação
+            </span>
+            <button
+              type="button"
+              onClick={onFecharCaixa}
+              className="inline-flex items-center gap-2 rounded-xl border border-ink-border bg-ink-foreground/[0.10] px-4 py-2.5 text-sm font-bold text-ink-foreground transition-all hover:bg-ink-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-foreground/60"
+            >
+              <LockKeyhole className="h-4 w-4" />
+              Fechar caixa
+            </button>
+          </div>
         </div>
 
         <div className="relative mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
