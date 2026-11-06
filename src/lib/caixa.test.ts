@@ -147,6 +147,29 @@ describe("despesas de funcionários", () => {
 });
 
 describe("despesas gerais — Outros", () => {
+  it("registra gasolina e diesel em Outros com litros e preço", () => {
+    const combustiveis: Lancamento[] = [
+      {
+        id: "outros-gasolina", tipo: "despesas", valor: 72.9,
+        tipoDespesaGeral: "outros", descricaoDespesa: "Veículo de apoio",
+        combustivel: "gasolina", litros: 10, precoLitro: 7.29,
+        criadoEm: "2026-11-06T11:30:00",
+      },
+      {
+        id: "outros-diesel", tipo: "despesas", valor: 73.9,
+        tipoDespesaGeral: "outros", descricaoDespesa: "Máquina do posto",
+        combustivel: "diesel", litros: 10, precoLitro: 7.39,
+        criadoEm: "2026-11-06T11:35:00",
+      },
+    ];
+    const resumo = calcularResumo(combustiveis, TURNO.precos);
+    expect(combustiveis.every((l) => l.funcionario === undefined)).toBe(true);
+    expect(combustiveis.map((l) => l.combustivel)).toEqual(["gasolina", "diesel"]);
+    expect(resumo.totalSaidas).toBeCloseTo(146.8);
+    expect(resumo.valorGasolina).toBe(0);
+    expect(resumo.valorDiesel).toBe(0);
+  });
+
   it("registra gasto de cozinha sem atribuir a nenhum funcionário", () => {
     const l: Lancamento = {
       id: "cozinha-1",
