@@ -117,8 +117,8 @@ describe("lançamentos de notas e clientes outras notas", () => {
 });
 
 describe("despesas de funcionários", () => {
-  it("mantém os cinco funcionários e as quatro categorias solicitadas", () => {
-    expect([...FUNCIONARIOS]).toEqual(["LUCIVANDO", "ROAN", "GUSTAVO", "NAYZA", "ROANY"]);
+  it("mantém os seis responsáveis e as quatro categorias solicitadas", () => {
+    expect([...FUNCIONARIOS]).toEqual(["LUCIVANDO", "ROAN", "GUSTAVO", "NAYZA", "ROANY", "MOABE GERENTE"]);
     expect(TIPOS_DESPESA_FUNCIONARIO.map((t) => t.id)).toEqual([
       "vale", "gasolina", "diesel", "dinheiro",
     ]);
