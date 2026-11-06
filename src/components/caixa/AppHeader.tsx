@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Clock3, Fuel, RotateCcw } from "lucide-react";
+import { modoTesteAtivo } from "@/lib/modo-teste";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -39,7 +40,7 @@ export function AppHeader({ posto, onReiniciarTeste }: { posto: string; onReinic
               {hora}
             </div>
           )}
-          {import.meta.env.DEV && (
+          {modoTesteAtivo() && (
             <>
               <span className="eyebrow rounded-full border border-warning/50 bg-warning-soft px-3 py-1.5 text-warning-foreground">
                 Modo teste
@@ -72,7 +73,7 @@ export function AppHeader({ posto, onReiniciarTeste }: { posto: string; onReinic
                 </AlertDialog>
               )}
             </>
-          )>
+          )}
         </div>
       </div>
     </header>
