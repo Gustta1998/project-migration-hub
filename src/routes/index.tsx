@@ -71,6 +71,18 @@ function Caixa() {
     setSessao({ versao: 1, abertura, lancamentos: [], notas });
   }, []);
 
+  const reiniciarTeste = useCallback(() => {
+    // Disponível apenas no servidor de desenvolvimento; nunca em build de produção.
+    if (!import.meta.env.DEV) return;
+    try {
+      window.localStorage.removeItem(CHAVE_SESSAO);
+    } catch {
+      // Sem persistência, o estado em memória também precisa ser limpo.
+    }
+    setUltimoFechamento(null);
+    setSessao(null);
+  }, []);
+
   const confirmarFechamento = useCallback((s: SessaoCaixa, fechamento: FechamentoCaixa) => {
     const registro: TurnoFechado = { id: crypto.randomUUID(), sessao: s, fechamento };
     if (!arquivarFechamento(registro)) return false;
@@ -107,17 +119,21 @@ function Caixa() {
     );
   }
   if (!sessao) return <AberturaCaixa posto={TURNO.posto} onAberto={abrir} />;
-  return <Pdv sessao={sessao} setSessao={setSessao} onFechar={(f) => confirmarFechamento(sessao, f)} />;
+  return <Pdv sessao={sessao} setSessao={setSessao}
+    onFechar={(f) => confirmarFechamento(sessao, f)}
+    onReiniciarTeste={reiniciarTeste} />;
 }
 
 function Pdv({
   sessao,
   setSessao,
   onFechar,
+  onReiniciarTeste,
 }: {
   sessao: SessaoCaixa;
   setSessao: React.Dispatch<React.SetStateAction<SessaoCaixa | null>>;
   onFechar: (fechamento: FechamentoCaixa) => boolean;
+  onReiniciarTeste: () => void;
 }) {
   const { abertura, lancamentos, notas } = sessao;
   const precos = abertura.precos;
@@ -146,7 +162,7 @@ function Pdv({
 
   return (
     <div className="min-h-screen">
-      <AppHeader posto={TURNO.posto} />
+      <AppHeader posto={TURNO.posto} onReiniciarTeste={onReiniciarTeste} />
 
       <main className="mx-auto grid max-w-[1600px] gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
