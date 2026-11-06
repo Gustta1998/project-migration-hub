@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CheckCircle2, LockKeyholeOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/caixa/AppHeader";
+import { modoTesteAtivo } from "@/lib/modo-teste";
 import { TurnoCard } from "@/components/caixa/TurnoCard";
 import { ActionGrid } from "@/components/caixa/ActionGrid";
 import { NotasAutorizadas } from "@/components/caixa/NotasAutorizadas";
@@ -73,7 +74,7 @@ function Caixa() {
 
   const reiniciarTeste = useCallback(() => {
     // Disponível apenas no servidor de desenvolvimento; nunca em build de produção.
-    if (!import.meta.env.DEV) return;
+    if (!modoTesteAtivo()) return;
     try {
       window.localStorage.removeItem(CHAVE_SESSAO);
     } catch {
