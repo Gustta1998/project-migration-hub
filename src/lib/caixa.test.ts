@@ -5,6 +5,8 @@ import {
   desfazerAbastecimento,
   filtrarHistorico,
   FILTROS_HISTORICO,
+  FUNCIONARIOS,
+  TIPOS_DESPESA_FUNCIONARIO,
   LANCAMENTOS_INICIAIS,
   NOTAS,
   notasEmAberto,
@@ -111,5 +113,35 @@ describe("lançamentos de notas e clientes outras notas", () => {
     expect(lancamentos[0].responsavel).toBe("Maria");
     expect(lancamentos[1].modalidade).toBe("prazo");
     expect(filtrarHistorico(lancamentos, "notas")).toHaveLength(3);
+  });
+});
+
+describe("despesas de funcionários", () => {
+  it("mantém os cinco funcionários e as quatro categorias solicitadas", () => {
+    expect([...FUNCIONARIOS]).toEqual(["LUCIVANDO", "ROAN", "GUSTAVO", "NAYZA", "ROANY"]);
+    expect(TIPOS_DESPESA_FUNCIONARIO.map((t) => t.id)).toEqual([
+      "vale", "gasolina", "diesel", "dinheiro",
+    ]);
+  });
+
+  it("guarda funcionário, tipo e litros para futura conferência mensal", () => {
+    const l: Lancamento = {
+      id: "funcionario-1",
+      tipo: "despesas",
+      valor: 72.9,
+      funcionario: "ROANY",
+      tipoDespesaFuncionario: "gasolina",
+      combustivel: "gasolina",
+      litros: 10,
+      precoLitro: 7.29,
+      criadoEm: "2026-11-06T10:00:00",
+    };
+    const r = calcularResumo([l], TURNO.precos);
+    expect(l.funcionario).toBe("ROANY");
+    expect(l.tipoDespesaFuncionario).toBe("gasolina");
+    expect(l.litros).toBe(10);
+    expect(r.totalSaidas).toBeCloseTo(72.9);
+    expect(r.valorGasolina).toBe(0);
+    expect(r.total).toBe(0);
   });
 });
