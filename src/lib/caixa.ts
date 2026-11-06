@@ -1,5 +1,16 @@
 export type Combustivel = "gasolina" | "diesel";
 
+export const FUNCIONARIOS = ["LUCIVANDO", "ROAN", "GUSTAVO", "NAYZA", "ROANY"] as const;
+export type Funcionario = (typeof FUNCIONARIOS)[number];
+
+export const TIPOS_DESPESA_FUNCIONARIO = [
+  { id: "vale", label: "Vale" },
+  { id: "gasolina", label: "Gasolina" },
+  { id: "diesel", label: "Diesel" },
+  { id: "dinheiro", label: "Dinheiro" },
+] as const;
+export type TipoDespesaFuncionario = (typeof TIPOS_DESPESA_FUNCIONARIO)[number]["id"];
+
 export type TipoLancamento =
   | "pix_maquininha"
   | "pix_manual"
@@ -48,6 +59,9 @@ export interface Lancamento {
   precoLitro?: number | undefined;
   responsavel?: string | undefined;
   destinoNota?: string | undefined;
+  /** Dados estruturados para o futuro relatório mensal de funcionários do gerente. */
+  funcionario?: Funcionario | undefined;
+  tipoDespesaFuncionario?: TipoDespesaFuncionario | undefined;
   criadoEm: string; // ISO
   observacao?: string | undefined;
 }
