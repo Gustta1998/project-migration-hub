@@ -9,6 +9,9 @@ import {
 
 export function AppHeader({ posto, onReiniciarTeste }: { posto: string; onReiniciarTeste?: () => void }) {
   const [hora, setHora] = useState<string | null>(null);
+  const [modoTeste, setModoTeste] = useState(false);
+
+  useEffect(() => setModoTeste(modoTesteAtivo()), []);
 
   useEffect(() => {
     const tick = () =>
@@ -40,7 +43,7 @@ export function AppHeader({ posto, onReiniciarTeste }: { posto: string; onReinic
               {hora}
             </div>
           )}
-          {modoTesteAtivo() && (
+          {modoTeste && (
             <>
               <span className="eyebrow rounded-full border border-warning/50 bg-warning-soft px-3 py-1.5 text-warning-foreground">
                 Modo teste
