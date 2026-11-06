@@ -1,6 +1,6 @@
 export type Combustivel = "gasolina" | "diesel";
 
-export const FUNCIONARIOS = ["LUCIVANDO", "ROAN", "GUSTAVO", "NAYZA", "ROANY"] as const;
+export const FUNCIONARIOS = ["LUCIVANDO", "ROAN", "GUSTAVO", "NAYZA", "ROANY", "MOABE GERENTE"] as const;
 export type Funcionario = (typeof FUNCIONARIOS)[number];
 
 export const TIPOS_DESPESA_FUNCIONARIO = [
