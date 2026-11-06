@@ -21,12 +21,15 @@ const icones = { vale: HandCoins, gasolina: Droplet, diesel: Droplet, dinheiro: 
 export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
   const [funcionario, setFuncionario] = useState<Funcionario | "OUTROS" | "">("");
   const [categoria, setCategoria] = useState<TipoDespesaFuncionario | "">("");
+  const [tipoOutros, setTipoOutros] = useState<"geral" | "gasolina" | "diesel">("geral");
   const [valorTexto, setValorTexto] = useState("");
   const [litrosTexto, setLitrosTexto] = useState("");
   const [observacao, setObservacao] = useState("");
   const [erro, setErro] = useState("");
 
-  const combustivel = categoria === "gasolina" || categoria === "diesel" ? categoria : undefined;
+  const combustivel = funcionario === "OUTROS"
+    ? (tipoOutros === "geral" ? undefined : tipoOutros)
+    : (categoria === "gasolina" || categoria === "diesel" ? categoria : undefined);
   const litros = parseNumeroBR(litrosTexto);
   const precoLitro = combustivel ? precos[combustivel] : undefined;
   const valorDigitado = parseNumeroBR(valorTexto);
@@ -43,13 +46,20 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
     if (!funcionario) return setErro("Selecione um funcionário ou Outros.");
     if (funcionario === "OUTROS") {
       if (!observacao.trim()) return setErro("Descreva a despesa (ex.: cozinha, alimentação ou material).");
+      if (combustivel && (litros === null || !Number.isFinite(litros) || litros <= 0)) {
+        return setErro("Informe uma quantidade de litros maior que zero.");
+      }
       if (!Number.isFinite(valor) || valor <= 0) return setErro("Informe um valor válido maior que zero.");
       onSave({
         tipo: "despesas",
         valor,
         tipoDespesaGeral: "outros",
         descricaoDespesa: observacao.trim(),
-        observacao: "Outros · " + observacao.trim(),
+        combustivel,
+        litros: combustivel ? litros! : undefined,
+        precoLitro,
+        observacao: ["Outros", combustivel ? (combustivel === "gasolina" ? "Gasolina" : "Diesel") : "Despesa geral", 
+          combustivel && litros !== null ? formatLitros(litros) : "", observacao.trim()].filter(Boolean).join(" · "),
       });
       return;
     }
@@ -97,6 +107,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
                 onChange={(e) => {
                   setFuncionario(e.target.value as Funcionario | "OUTROS" | "");
                   setCategoria("");
+                  setTipoOutros("geral");
                   setValorTexto("");
                   setLitrosTexto("");
                   setErro("");
@@ -109,6 +120,32 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
               </select>
             </div>
           </label>
+
+          {funcionario === "OUTROS" && (
+            <div>
+              <span className="eyebrow text-muted-foreground">Tipo de despesa</span>
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
+                {(["geral", "gasolina", "diesel"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    aria-pressed={tipoOutros === t}
+                    onClick={() => { setTipoOutros(t); setValorTexto(""); setLitrosTexto(""); setErro(""); }}
+                    className={
+                      "rounded-xl border-2 px-2 py-3 text-sm font-bold transition-colors " +
+                      (tipoOutros === t
+                        ? t === "gasolina" ? "border-gasolina bg-gasolina-soft"
+                          : t === "diesel" ? "border-diesel bg-diesel-soft"
+                            : "border-primary bg-primary/10 text-primary shadow-card"
+                        : "border-border text-muted-foreground hover:border-muted-foreground/40")
+                    }
+                  >
+                    {t === "geral" ? "Despesa geral" : t === "gasolina" ? "Gasolina" : "Diesel"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {funcionario && funcionario !== "OUTROS" && (
             <div>
