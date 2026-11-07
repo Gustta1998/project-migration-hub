@@ -16,7 +16,7 @@ export function ActionGrid({ onSelect }: { onSelect: (tipo: TipoLancamento) => v
           <h2 className="font-display text-2xl font-bold tracking-tight">Novo lançamento</h2>
         </div>
         <p className="hidden text-xs text-muted-foreground sm:block">
-          Toque em uma forma de pagamento para registrar
+          Toque em uma opção para registrar
         </p>
       </div>
 
