@@ -15,6 +15,7 @@ import {
 
 interface Props {
   sessao: SessaoCaixa;
+  trocoRetirado: boolean;
   onVoltar: () => void;
   onConfirmar: (fechamento: FechamentoCaixa) => boolean;
   onAdicionarSangria: (valor: number, descricao: string) => void;
@@ -39,7 +40,7 @@ const nomeLancamento = (l: Lancamento) => {
   return l.observacao || (l.combustivel ? l.combustivel : "");
 };
 
-export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionarSangria }: Props) {
+export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirmar, onAdicionarSangria }: Props) {
   const [textoLeituras, setTextoLeituras] = useState<LeiturasTexto>(leiturasVazias);
   const [contadoTexto, setContadoTexto] = useState("");
   const [sangriaTexto, setSangriaTexto] = useState("");
@@ -52,11 +53,11 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
   const leituras = validarLeiturasFinais(textoLeituras, sessao.abertura.leituras);
   const contado = parseNumeroBR(contadoTexto);
   const giro = leituras.ok ? giroMedido(sessao.abertura.leituras, leituras.valores) : null;
-  const esperado = leituras.ok ? dinheiroEsperado(sessao, leituras.valores) : null;
+  const esperado = leituras.ok ? dinheiroEsperado(sessao, leituras.valores, trocoRetirado) : null;
   const conferencia = useMemo(
     () => leituras.ok && contado !== null && contado >= 0
-      ? conferirCaixa(sessao, leituras.valores, contado) : null,
-    [sessao, textoLeituras, contadoTexto],
+      ? conferirCaixa(sessao, leituras.valores, contado, trocoRetirado) : null,
+    [sessao, textoLeituras, contadoTexto, trocoRetirado],
   );
   const resumo = useMemo(
     () => calcularResumo(sessao.lancamentos, sessao.abertura.precos),
@@ -119,8 +120,9 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
       fechadoEm: new Date().toISOString(),
       leiturasFinais: leituras.valores,
       dinheiroContado: contado,
+      trocoRetirado,
       observacao: observacao.trim(),
-      conferencia: conferirCaixa(sessao, leituras.valores, contado),
+      conferencia: conferirCaixa(sessao, leituras.valores, contado, trocoRetirado),
     });
     if (!ok) {
       setSalvando(false);
@@ -228,7 +230,7 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
               </button>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              A sangria será registrada no histórico e descontada da conferência do Caixa.
+              A sangria será registrada no histórico e somada à conferência do Caixa.
             </p>
           </Painel>
           <Painel titulo="Litros Vendidos (Giro de Bombas)" icon={<Fuel className="h-5 w-5" />}>
@@ -282,14 +284,14 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
             <Linha label="Notas (incluídas nas vendas)" valor={real(soma("notas"))} />
             <Linha label="Cartões (débito e crédito)" valor={real(soma("cartoes"))} />
             <Linha label="Pix (maquininha e manual)" valor={real(soma("pix_maquininha") + soma("pix_manual"))} />
-            <Linha label="Descontos" valor={"− " + real(soma("descontos"))} />
-            <Linha label="Sangrias" valor={"− " + real(soma("sangria"))} />
-            <Linha label="Troco inicial" valor={real(sessao.abertura.trocoInicial)} />
+            <Linha label="Descontos" valor={"+ " + real(soma("descontos"))} />
+            <Linha label="Sangrias" valor={"+ " + real(soma("sangria"))} />
+            <Linha label={trocoRetirado ? "Troco inicial (retirado)" : "Troco inicial (no caixa)"} valor={trocoRetirado ? real(0) : real(sessao.abertura.trocoInicial)} />
             <div className="mt-2 rounded-xl bg-primary-soft px-3 py-3">
               <Linha label="Valor esperado no Caixa" valor={esperado === null ? "Aguardando leituras finais" : real(esperado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: troco + (litros medidos de gasolina × preço) − pagamentos não recebidos em espécie − despesas de gasolina − descontos − sangrias.
+              Conferência: troco (somente se não retirado) + (litros medidos de gasolina × preço) − pagamentos não recebidos em espécie − despesas de gasolina + descontos + sangrias.
             </p>
           </Painel>
         </div>
