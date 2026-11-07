@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, LockKeyholeOpen } from "lucide-react";
+import { ArrowLeft, CheckCircle2, LockKeyholeOpen, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/caixa/AppHeader";
 import { modoTesteAtivo } from "@/lib/modo-teste";
@@ -140,6 +140,8 @@ function Pdv({
   const precos = abertura.precos;
   const [tipoAberto, setTipoAberto] = useState<TipoLancamento | null>(null);
   const [emFechamento, setEmFechamento] = useState(false);
+  const [confirmacaoTroco, setConfirmacaoTroco] = useState(false);
+  const [trocoRetirado, setTrocoRetirado] = useState<boolean | null>(null);
   const [notaRegistrada, setNotaRegistrada] = useState(false);
   useEffect(() => {
     if (!notaRegistrada) return;
@@ -153,10 +155,48 @@ function Pdv({
   const setNotas = (fn: (ns: NotaAutorizada[]) => NotaAutorizada[]) =>
     setSessao((s) => (s ? { ...s, notas: fn(s.notas) } : s));
 
-  if (emFechamento) return (
+  if (confirmacaoTroco) return (
+    <div className="grid min-h-screen place-items-center bg-background px-4">
+      <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-border bg-card shadow-lift">
+        <div className="flex items-center gap-3 bg-hero px-6 py-5 text-ink-foreground">
+          <Wallet className="h-7 w-7" />
+          <div>
+            <p className="eyebrow text-ink-muted">Posto Almeida · Antes do fechamento</p>
+            <h1 className="font-display text-2xl font-extrabold">Conferência do troco</h1>
+          </div>
+        </div>
+        <div className="space-y-5 px-6 py-6">
+          <p className="text-lg font-bold">O troco inicial já foi retirado do caixa?</p>
+          <p className="text-sm text-muted-foreground">
+            Troco registrado na abertura: <strong>{abertura.trocoInicial.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>.
+            Sua resposta definirá se esse valor entra na conferência. Se já retirou, o troco não será somado.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => { setTrocoRetirado(true); setConfirmacaoTroco(false); setEmFechamento(true); }}
+              className="rounded-xl border-2 border-primary bg-primary-soft px-4 py-4 text-center text-sm font-bold text-primary transition-colors hover:brightness-95">
+              SIM, já retirei o troco
+              <span className="mt-1 block text-xs font-normal">Não incluir o troco no cálculo</span>
+            </button>
+            <button type="button" onClick={() => { setTrocoRetirado(false); setConfirmacaoTroco(false); setEmFechamento(true); }}
+              className="rounded-xl border-2 border-border px-4 py-4 text-center text-sm font-bold transition-colors hover:border-primary/40 hover:bg-secondary">
+              NÃO, o troco continua no caixa
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">Incluir o troco no cálculo</span>
+            </button>
+          </div>
+          <button type="button" onClick={() => setConfirmacaoTroco(false)}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Voltar sem iniciar fechamento
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (emFechamento && trocoRetirado !== null) return (
     <FechamentoCaixaTela
       sessao={sessao}
-      onVoltar={() => setEmFechamento(false)}
+      trocoRetirado={trocoRetirado}
+      onVoltar={() => { setEmFechamento(false); setTrocoRetirado(null); }}
       onConfirmar={onFechar}
       onAdicionarSangria={(valor, descricao) => setLancamentos((ls) => [
         {
@@ -184,7 +224,7 @@ function Pdv({
             data={abertura.data}
             trocoInicial={abertura.trocoInicial}
             precos={precos}
-            onFecharCaixa={() => setEmFechamento(true)}
+            onFecharCaixa={() => setConfirmacaoTroco(true)}
           />
           <ActionGrid onSelect={setTipoAberto} />
           <NotasAutorizadas
