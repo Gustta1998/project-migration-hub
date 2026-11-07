@@ -9,7 +9,7 @@ import {
 } from "@/lib/caixa";
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
 import {
-  conferirCaixa, dinheiroEsperado, leiturasVazias, validarLeiturasFinais,
+  conferirCaixa, dinheiroEsperado, giroMedido, leiturasVazias, validarLeiturasFinais,
   type FechamentoCaixa, type LeiturasTexto,
 } from "@/lib/fechamento";
 
@@ -51,7 +51,8 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
 
   const leituras = validarLeiturasFinais(textoLeituras, sessao.abertura.leituras);
   const contado = parseNumeroBR(contadoTexto);
-  const esperado = dinheiroEsperado(sessao);
+  const giro = leituras.ok ? giroMedido(sessao.abertura.leituras, leituras.valores) : null;
+  const esperado = leituras.ok ? dinheiroEsperado(sessao, leituras.valores) : null;
   const conferencia = useMemo(
     () => leituras.ok && contado !== null && contado >= 0
       ? conferirCaixa(sessao, leituras.valores, contado) : null,
@@ -231,9 +232,9 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
             </p>
           </Painel>
           <Painel titulo="Litros Vendidos (Giro de Bombas)" icon={<Fuel className="h-5 w-5" />}>
-            <Linha label="Gasolina" valor={formatLitros(resumo.litrosGasolina)} destaque="text-gasolina" />
-            <Linha label="Diesel" valor={formatLitros(resumo.litrosDiesel)} destaque="text-diesel" />
-            <p className="mt-2 text-xs text-muted-foreground">Apenas litros vendidos; não inclui produtos.</p>
+            <Linha label="Gasolina" valor={giro ? formatLitros(giro.gasolina) : "Preencha as leituras finais"} destaque="text-gasolina" />
+            <Linha label="Diesel" valor={giro ? formatLitros(giro.diesel) : "Preencha as leituras finais"} destaque="text-diesel" />
+            <p className="mt-2 text-xs text-muted-foreground">Giro = leitura final menos leitura inicial, somando as bombas de cada combustível.</p>
           </Painel>
         </div>
 
@@ -276,7 +277,7 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
           </Painel>
 
           <Painel titulo="Totais (para conferência)" icon={<Wallet className="h-5 w-5" />}>
-            <Linha label="Vendas de gasolina" valor={real(vendidoGasolina)} />
+            <Linha label="Gasolina apurada nas bombas" valor={giro ? real(giro.gasolina * sessao.abertura.precos.gasolina) : "Aguardando leituras finais"} />
             {vendidoDiesel > 0 && <Linha label="Vendas de diesel (fora do Caixa)" valor={real(vendidoDiesel)} />}
             <Linha label="Notas (incluídas nas vendas)" valor={real(soma("notas"))} />
             <Linha label="Cartões (débito e crédito)" valor={real(soma("cartoes"))} />
@@ -285,10 +286,10 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
             <Linha label="Sangrias" valor={"− " + real(soma("sangria"))} />
             <Linha label="Troco inicial" valor={real(sessao.abertura.trocoInicial)} />
             <div className="mt-2 rounded-xl bg-primary-soft px-3 py-3">
-              <Linha label="Valor esperado no Caixa" valor={real(esperado)} forte />
+              <Linha label="Valor esperado no Caixa" valor={esperado === null ? "Aguardando leituras finais" : real(esperado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: troco + vendas de gasolina − pagamentos de gasolina sem dinheiro − descontos − sangrias.
+              Conferência: troco + (litros medidos de gasolina × preço) − pagamentos não recebidos em espécie − despesas de gasolina − descontos − sangrias.
             </p>
           </Painel>
         </div>
@@ -298,7 +299,7 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl bg-secondary p-3 text-center">
                 <p className="text-sm font-bold">Valor esperado</p>
-                <p className="mt-2 font-display text-xl font-bold num">{real(esperado)}</p>
+                <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
               </div>
               <label className="rounded-xl bg-secondary p-3 text-center">
                 <span className="text-sm font-bold">Valor contado</span>
