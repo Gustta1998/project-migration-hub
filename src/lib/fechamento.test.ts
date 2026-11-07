@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  conferirCaixa, dinheiroEsperado, validarLeiturasFinais, leiturasVazias,
+  conferirCaixa, dinheiroEsperado, giroMedido, validarLeiturasFinais, leiturasVazias,
 } from "./fechamento";
 import { TURNO, type Lancamento } from "./caixa";
 import type { SessaoCaixa } from "./abertura";
@@ -112,5 +112,57 @@ describe("conferência do caixa exclusivo de gasolina", () => {
       ],
     };
     expect(dinheiroEsperado(comOutrosProdutos)).toBe(270);
+  });
+});
+
+describe("cálculo reativo pelas leituras finais", () => {
+  const finais = {
+    gasolina: { bomba1: 110, bomba2: 205 },
+    diesel: { bomba1: 310, bomba2: 400 },
+  };
+
+  it("calcula giro como finais menos iniciais das quatro bombas", () => {
+    expect(giroMedido(sessao.abertura.leituras, finais)).toEqual({
+      gasolina: 15, diesel: 10,
+    });
+  });
+
+  it("recalcula o dinheiro esperado quando a leitura final de gasolina aumenta", () => {
+    const esperado15 = dinheiroEsperado(sessao, finais);
+    const esperado16 = dinheiroEsperado(sessao, {
+      ...finais,
+      gasolina: { ...finais.gasolina, bomba1: 111 },
+    });
+    expect(esperado15).toBeCloseTo(222.9);
+    expect(esperado16).toBeCloseTo(230.19);
+    expect(esperado16 - esperado15).toBeCloseTo(7.29);
+  });
+
+  it("não altera conferência de gasolina ao mudar apenas bomba diesel", () => {
+    const esperado = dinheiroEsperado(sessao, finais);
+    expect(dinheiroEsperado(sessao, {
+      ...finais,
+      diesel: { ...finais.diesel, bomba1: 400 },
+    })).toBe(esperado);
+  });
+
+  it("produtos do posto ficam fora do giro e da diferença financeira", () => {
+    const produto: Lancamento = {
+      id: "produto", tipo: "produto_posto", valor: 125,
+      produtoId: "arla", quantidadeProduto: 1,
+      criadoEm: iso,
+    };
+    expect(dinheiroEsperado({ ...sessao, lancamentos: [...sessao.lancamentos, produto] }, finais))
+      .toBe(dinheiroEsperado(sessao, finais));
+  });
+
+  it("conferência final usa leituras medidas, não somente vendas registradas", () => {
+    const finaisComMaisGas = {
+      ...finais, gasolina: { bomba1: 111, bomba2: 205 },
+    };
+    const conferencia = conferirCaixa(sessao, finaisComMaisGas, 222.9);
+    expect(conferencia.dinheiroEsperado).toBeCloseTo(230.19);
+    expect(conferencia.situacaoDinheiro).toBe("faltando");
+    expect(conferencia.diferencaLitros.gasolina).toBe(1);
   });
 });
