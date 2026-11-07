@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, CheckCircle2, ClipboardCheck, Droplet, Fuel, LockKeyhole,
+  ArrowLeft, CheckCircle2, ClipboardCheck, Fuel, LockKeyhole,
   MinusCircle, Plus, ShoppingBasket, Wallet, AlertTriangle,
 } from "lucide-react";
 import {
-  calcularResumo, formatBRL, formatDataHora, formatLitros, litrosDe,
-  tipoInfo, type Lancamento, type TipoLancamento,
+  calcularResumo, formatBRL, formatLitros,
+  type Lancamento, type TipoLancamento,
 } from "@/lib/caixa";
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
 import {
@@ -22,7 +22,7 @@ interface Props {
 
 const normal = "rounded-xl border border-input bg-background px-3 py-2 font-semibold outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
 const real = (valor: number) => formatBRL(Math.round(valor * 100) / 100);
-const titulo = "flex items-center gap-2 rounded-t-2xl bg-hero px-4 py-3 text-ink-foreground";
+const faixaTitulo = "flex items-center gap-2 rounded-t-2xl bg-hero px-4 py-3 text-ink-foreground";
 const categorias: { tipo: TipoLancamento; titulo: string }[] = [
   { tipo: "sangria", titulo: "Sangrias" },
   { tipo: "pix_maquininha", titulo: "Pix maquininha" },
@@ -177,7 +177,7 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
                   ))}
                   <td className="border-b border-border bg-primary-soft p-3 text-center align-middle">
                     <p className="eyebrow text-muted-foreground">Vendas e notas</p>
-                    <p className="mt-1 font-display text-2xl font-bold num">{real(resumo.totalVendas)}</p>
+                    <p className="mt-1 font-display text-2xl font-bold num">{real(resumo.totalVendas - soma("produto_posto"))}</p>
                     <p className="mt-2 text-xs text-muted-foreground">Produtos separados abaixo</p>
                   </td>
                 </tr>
@@ -377,14 +377,13 @@ export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionar
 function Painel({ titulo, icon, children }: { titulo: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-      <div className={titulo === "Caixa (Apenas Vendas de Gasolina)" ? tituloCss() : tituloCss()}>
+      <div className={faixaTitulo}>
         {icon}<h2 className="font-display text-lg font-bold">{titulo}</h2>
       </div>
       <div className="p-4">{children}</div>
     </section>
   );
 }
-function tituloCss() { return titulo; }
 
 function Linha({ label, valor, forte, destaque }: { label: string; valor: string; forte?: boolean; destaque?: string }) {
   return (
