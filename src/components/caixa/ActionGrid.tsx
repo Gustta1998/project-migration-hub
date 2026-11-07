@@ -22,7 +22,7 @@ export function ActionGrid({ onSelect }: { onSelect: (tipo: TipoLancamento) => v
 
       <div className="mt-5 space-y-5">
         {GRUPOS.map((g) => {
-          const tipos = TIPOS.filter((t) => g.categorias.includes(t.categoria));
+          const tipos = TIPOS.filter((t) => g.categorias.includes(t.categoria) && t.id !== "dinheiro");
           return (
             <div key={g.titulo}>
               <p className="eyebrow mb-2.5 text-muted-foreground/80">{g.titulo}</p>
