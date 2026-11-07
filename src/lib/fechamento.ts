@@ -41,6 +41,20 @@ export interface ConferenciaCaixa {
   situacaoBombas: "certo" | "divergente";
 }
 
+/** Classifica o saldo em reais da gasolina, pela diferença entre giro medido e litros lançados. */
+export function avaliarSaldoCaixa(diferencaLitrosGasolina: number, precoGasolina: number): {
+  saldo: number;
+  status: "bom" | "regular" | "divergente";
+} {
+  // Converte a diferença de litros a centavos para avaliar limites de R$ 5 e R$ 10.
+  const saldo = Math.round((diferencaLitrosGasolina * precoGasolina + Number.EPSILON) * 100) / 100;
+  const absoluto = Math.abs(saldo);
+  return {
+    saldo,
+    status: absoluto <= 5 ? "bom" : absoluto <= 10 ? "regular" : "divergente",
+  };
+}
+
 export type LeiturasTexto = {
   diesel: { bomba1: string; bomba2: string };
   gasolina: { bomba1: string; bomba2: string };
