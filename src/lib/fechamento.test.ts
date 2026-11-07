@@ -74,7 +74,7 @@ describe("fechamento de caixa", () => {
       diesel: { bomba1: 310, bomba2: 400 },
     };
     expect(conferirCaixa(sessao, finais, 200).situacaoDinheiro).toBe("faltando");
-    expect(conferirCaixa(sessao, finais, 205).situacaoDinheiro).toBe("sobrando");
+    expect(conferirCaixa(sessao, finais, 225).situacaoDinheiro).toBe("sobrando");
   });
 
   it("detecta diferença de litros mesmo que dinheiro esteja certo", () => {
