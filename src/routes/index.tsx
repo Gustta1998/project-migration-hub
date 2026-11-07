@@ -158,6 +158,16 @@ function Pdv({
       sessao={sessao}
       onVoltar={() => setEmFechamento(false)}
       onConfirmar={onFechar}
+      onAdicionarSangria={(valor, descricao) => setLancamentos((ls) => [
+        {
+          id: crypto.randomUUID(),
+          criadoEm: new Date().toISOString(),
+          tipo: "sangria",
+          valor,
+          observacao: descricao,
+        },
+        ...ls,
+      ])}
     />
   );
 
