@@ -18,6 +18,7 @@ import {
 import { CATEGORIA_TILE, TIPO_ICON } from "./icons";
 import { NotaLancamentoDialog } from "./NotaLancamentoDialog";
 import { DespesaFuncionarioDialog } from "./DespesaFuncionarioDialog";
+import { ProdutoPostoDialog } from "./ProdutoPostoDialog";
 
 interface Props {
   tipo: TipoLancamento | null;
@@ -47,6 +48,9 @@ export function LancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   }
   if (tipo === "despesas") {
     return <DespesaFuncionarioDialog precos={precos} onClose={onClose} onSave={onSave} />;
+  }
+  if (tipo === "produto_posto") {
+    return <ProdutoPostoDialog onClose={onClose} onSave={onSave} />;
   }
   const info = tipoInfo(tipo);
   const Icon = TIPO_ICON[tipo];
