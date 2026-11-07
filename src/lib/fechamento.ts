@@ -71,27 +71,31 @@ export function validarLeiturasFinais(
   return erros.length ? { ok: false, erros } : { ok: true, valores };
 }
 
-const tipoDinheiroRetirado = (l: Lancamento) =>
-  l.tipo === "sangria" ||
-  (l.tipo === "despesas" &&
-    !l.combustivel &&
-    (l.tipoDespesaGeral === "outros" || l.tipoDespesaFuncionario === "vale" ||
-      l.tipoDespesaFuncionario === "dinheiro"));
-
 /**
- * Conferência de numerário estimado:
- * troco inicial + recebimentos marcados como Dinheiro - sangrias - saídas
- * monetárias identificadas. Descontos não reduzem o numerário uma segunda vez;
- * despesas de combustível não representam retirada de notas e moedas.
+ * Conferência do CAIXA de gasolina (não inclui produtos e nem diesel).
+ * Parte do total de vendas de gasolina e desconta as formas não monetárias,
+ * notas a prazo, descontos e sangrias. O troco inicial é considerado.
+ *
+ * Os lançamentos de produtos do posto ficam em relatório independente e
+ * nunca entram na diferença de gasolina.
  */
 export function dinheiroEsperado(sessao: SessaoCaixa): number {
-  const recebimentos = sessao.lancamentos
-    .filter((l) => l.tipo === "dinheiro")
-    .reduce((sum, l) => sum + l.valor, 0);
-  const retiradas = sessao.lancamentos
-    .filter(tipoDinheiroRetirado)
-    .reduce((sum, l) => sum + l.valor, 0);
-  return arred(sessao.abertura.trocoInicial + recebimentos - retiradas);
+  const gas = sessao.lancamentos.filter((l) => l.combustivel === "gasolina" &&
+    l.tipo !== "despesas");
+  const vendasGasolina = gas.reduce((s, l) => s + l.valor, 0);
+  const naoDinheiro = gas
+    .filter((l) => l.tipo !== "dinheiro" &&
+      (l.tipo === "pix_maquininha" || l.tipo === "pix_manual" ||
+        l.tipo === "cartoes" || l.tipo === "cartao_frota" ||
+        l.tipo === "fit_card" || l.tipo === "notas" ||
+        l.tipo === "cliente_outras_notas"))
+    .reduce((s, l) => s + l.valor, 0);
+  const descontos = sessao.lancamentos
+    .filter((l) => l.tipo === "descontos").reduce((s, l) => s + l.valor, 0);
+  const sangrias = sessao.lancamentos
+    .filter((l) => l.tipo === "sangria").reduce((s, l) => s + l.valor, 0);
+  return arred(sessao.abertura.trocoInicial + vendasGasolina -
+    naoDinheiro - descontos - sangrias);
 }
 
 /** Compara a soma das quatro bombas com o combustível lançado em vendas e despesas. */
