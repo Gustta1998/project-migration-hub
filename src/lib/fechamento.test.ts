@@ -58,8 +58,8 @@ describe("fechamento de caixa", () => {
       gasolina: { bomba1: 110, bomba2: 205 },
       diesel: { bomba1: 310, bomba2: 400 },
     };
-    const esperado = dinheiroEsperado(sessao);
-    expect(esperado).toBeCloseTo(222.9);
+    const esperado = dinheiroEsperado(sessao, finais);
+    expect(esperado).toBeCloseTo(322.9);
     const conferencia = conferirCaixa(sessao, finais, esperado);
     expect(conferencia.litrosMedidos.gasolina).toBe(15);
     expect(conferencia.litrosLancados.gasolina).toBe(15);
@@ -74,7 +74,7 @@ describe("fechamento de caixa", () => {
       diesel: { bomba1: 310, bomba2: 400 },
     };
     expect(conferirCaixa(sessao, finais, 200).situacaoDinheiro).toBe("faltando");
-    expect(conferirCaixa(sessao, finais, 225).situacaoDinheiro).toBe("sobrando");
+    expect(conferirCaixa(sessao, finais, 325).situacaoDinheiro).toBe("sobrando");
   });
 
   it("detecta diferença de litros mesmo que dinheiro esteja certo", () => {
@@ -102,8 +102,8 @@ describe("conferência do caixa exclusivo de gasolina", () => {
         { id: "a", tipo: "descontos", valor: 5, criadoEm: iso },
       ],
     };
-    // Troco (200) + venda em dinheiro de gasolina (100) - sangria (25) - desconto (5).
-    expect(dinheiroEsperado(dados)).toBe(270);
+    // Troco (200) + venda em dinheiro de gasolina (100) + sangria (25) + desconto (5).
+    expect(dinheiroEsperado(dados)).toBe(330);
     const comOutrosProdutos: SessaoCaixa = {
       ...dados,
       lancamentos: [
@@ -111,7 +111,7 @@ describe("conferência do caixa exclusivo de gasolina", () => {
         { id: "x2", tipo: "produto_posto", valor: 125, criadoEm: iso },
       ],
     };
-    expect(dinheiroEsperado(comOutrosProdutos)).toBe(270);
+    expect(dinheiroEsperado(comOutrosProdutos)).toBe(330);
   });
 });
 
@@ -133,8 +133,8 @@ describe("cálculo reativo pelas leituras finais", () => {
       ...finais,
       gasolina: { ...finais.gasolina, bomba1: 111 },
     });
-    expect(esperado15).toBeCloseTo(222.9);
-    expect(esperado16).toBeCloseTo(230.19);
+    expect(esperado15).toBeCloseTo(322.9);
+    expect(esperado16).toBeCloseTo(330.19);
     expect(esperado16 - esperado15).toBeCloseTo(7.29);
   });
 
@@ -160,9 +160,53 @@ describe("cálculo reativo pelas leituras finais", () => {
     const finaisComMaisGas = {
       ...finais, gasolina: { bomba1: 111, bomba2: 205 },
     };
-    const conferencia = conferirCaixa(sessao, finaisComMaisGas, 222.9);
-    expect(conferencia.dinheiroEsperado).toBeCloseTo(230.19);
+    const conferencia = conferirCaixa(sessao, finaisComMaisGas, 322.9);
+    expect(conferencia.dinheiroEsperado).toBeCloseTo(330.19);
     expect(conferencia.situacaoDinheiro).toBe("faltando");
     expect(conferencia.diferencaLitros.gasolina).toBe(1);
+  });
+});
+
+describe("confirmação de troco retirado e soma de ajustes", () => {
+  const finais = {
+    gasolina: { bomba1: 110, bomba2: 205 },
+    diesel: { bomba1: 310, bomba2: 400 },
+  };
+
+  it("inclui o troco quando o funcionário informa que continua no caixa", () => {
+    expect(dinheiroEsperado(sessao, finais, false)).toBeCloseTo(322.9);
+    const conferencia = conferirCaixa(sessao, finais, 322.9, false);
+    expect(conferencia.trocoRetirado).toBe(false);
+    expect(conferencia.situacaoDinheiro).toBe("certo");
+  });
+
+  it("exclui o troco quando o funcionário confirma retirada", () => {
+    expect(dinheiroEsperado(sessao, finais, true)).toBeCloseTo(122.9);
+    const conferencia = conferirCaixa(sessao, finais, 122.9, true);
+    expect(conferencia.trocoRetirado).toBe(true);
+    expect(conferencia.situacaoDinheiro).toBe("certo");
+  });
+
+  it("soma descontos e sangrias, inclusive última sangria, sem subtrair", () => {
+    const comAjustes: SessaoCaixa = {
+      ...sessao,
+      lancamentos: [
+        ...sessao.lancamentos,
+        { id: "desconto-extra", tipo: "descontos", valor: 12, criadoEm: iso },
+        { id: "ultima-sangria", tipo: "sangria", valor: 30, criadoEm: iso },
+      ],
+    };
+    expect(dinheiroEsperado(comAjustes, finais, true)).toBeCloseTo(164.9);
+  });
+
+  it("não muda a conferência de gasolina devido a produtos do posto", () => {
+    const comProduto: SessaoCaixa = {
+      ...sessao,
+      lancamentos: [
+        ...sessao.lancamentos,
+        { id: "p", tipo: "produto_posto", valor: 125, criadoEm: iso },
+      ],
+    };
+    expect(dinheiroEsperado(comProduto, finais, true)).toBe(dinheiroEsperado(sessao, finais, true));
   });
 });
