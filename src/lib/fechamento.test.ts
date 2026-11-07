@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  conferirCaixa, dinheiroEsperado, giroMedido, validarLeiturasFinais, leiturasVazias,
+  avaliarSaldoCaixa, conferirCaixa, dinheiroEsperado, giroMedido, validarLeiturasFinais, leiturasVazias,
 } from "./fechamento";
 import { TURNO, type Lancamento } from "./caixa";
 import type { SessaoCaixa } from "./abertura";
@@ -208,5 +208,38 @@ describe("confirmação de troco retirado e soma de ajustes", () => {
       ],
     };
     expect(dinheiroEsperado(comProduto, finais, true)).toBe(dinheiroEsperado(sessao, finais, true));
+  });
+});
+
+describe("saldo do caixa convertido de litros em reais", () => {
+  it("mostra falta quando o giro é menor que os litros registrados", () => {
+    expect(avaliarSaldoCaixa(-0.602, 7.29)).toEqual({ saldo: -4.39, status: "bom" });
+  });
+
+  it("mostra sobra quando o giro é maior que os litros registrados", () => {
+    expect(avaliarSaldoCaixa(0.602, 7.29)).toEqual({ saldo: 4.39, status: "bom" });
+  });
+
+  it("classifica por valor absoluto, sem distinguir falta de sobra", () => {
+    expect(avaliarSaldoCaixa(5, 1).status).toBe("bom");
+    expect(avaliarSaldoCaixa(-5, 1).status).toBe("bom");
+    expect(avaliarSaldoCaixa(5.01, 1).status).toBe("regular");
+    expect(avaliarSaldoCaixa(-8, 1).status).toBe("regular");
+    expect(avaliarSaldoCaixa(10, 1).status).toBe("regular");
+    expect(avaliarSaldoCaixa(-10.01, 1).status).toBe("divergente");
+    expect(avaliarSaldoCaixa(11, 1).status).toBe("divergente");
+    expect(avaliarSaldoCaixa(0, 7.29)).toEqual({ saldo: 0, status: "bom" });
+  });
+
+  it("usa a diferença real da bomba e o preço da abertura", () => {
+    const finais = {
+      gasolina: { bomba1: 110, bomba2: 205 },
+      diesel: { bomba1: 310, bomba2: 400 },
+    };
+    const conferencia = conferirCaixa(sessao, finais, dinheiroEsperado(sessao, finais));
+    expect(conferencia.diferencaLitros.gasolina).toBe(0);
+    expect(avaliarSaldoCaixa(conferencia.diferencaLitros.gasolina, sessao.abertura.precos.gasolina).saldo).toBe(0);
+    const outra = conferirCaixa(sessao, { ...finais, gasolina: { bomba1: 111, bomba2: 205 } }, dinheiroEsperado(sessao, finais));
+    expect(avaliarSaldoCaixa(outra.diferencaLitros.gasolina, sessao.abertura.precos.gasolina).saldo).toBe(7.29);
   });
 });
