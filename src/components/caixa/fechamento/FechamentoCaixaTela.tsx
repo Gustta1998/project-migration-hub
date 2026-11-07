@@ -1,6 +1,12 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { ArrowLeft, BadgeCheck, CheckCircle2, ClipboardCheck, Droplet, Gauge, LockKeyhole, Wallet, AlertTriangle } from "lucide-react";
-import { formatBRL, formatDataHora, formatLitros, tipoInfo, TIPOS, type Lancamento } from "@/lib/caixa";
+import { useMemo, useState } from "react";
+import {
+  ArrowLeft, CheckCircle2, ClipboardCheck, Droplet, Fuel, LockKeyhole,
+  MinusCircle, Plus, ShoppingBasket, Wallet, AlertTriangle,
+} from "lucide-react";
+import {
+  calcularResumo, formatBRL, formatDataHora, formatLitros, litrosDe,
+  tipoInfo, type Lancamento, type TipoLancamento,
+} from "@/lib/caixa";
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
 import {
   conferirCaixa, dinheiroEsperado, leiturasVazias, validarLeiturasFinais,
@@ -11,306 +17,380 @@ interface Props {
   sessao: SessaoCaixa;
   onVoltar: () => void;
   onConfirmar: (fechamento: FechamentoCaixa) => boolean;
+  onAdicionarSangria: (valor: number, descricao: string) => void;
 }
 
-const campo = "w-full rounded-xl border border-input bg-background px-3.5 py-2.5 font-display font-bold num outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
-const painel = "rounded-3xl border border-border bg-card p-5 shadow-card sm:p-6";
-const formatDelta = (n: number, suffix = "") => (n > 0 ? "+" : "") + n.toLocaleString("pt-BR", { maximumFractionDigits: 3, minimumFractionDigits: suffix === " L" ? 3 : 2 }) + suffix;
+const normal = "rounded-xl border border-input bg-background px-3 py-2 font-semibold outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
+const real = (valor: number) => formatBRL(Math.round(valor * 100) / 100);
+const titulo = "flex items-center gap-2 rounded-t-2xl bg-hero px-4 py-3 text-ink-foreground";
+const categorias: { tipo: TipoLancamento; titulo: string }[] = [
+  { tipo: "sangria", titulo: "Sangrias" },
+  { tipo: "pix_maquininha", titulo: "Pix maquininha" },
+  { tipo: "pix_manual", titulo: "Pix manual" },
+  { tipo: "cartoes", titulo: "Cartões" },
+  { tipo: "descontos", titulo: "Descontos" },
+  { tipo: "notas", titulo: "Notas" },
+];
 
-export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar }: Props) {
-  const [finaisTexto, setFinaisTexto] = useState<LeiturasTexto>(leiturasVazias);
+const nomeLancamento = (l: Lancamento) => {
+  if (l.tipo === "cartoes") return l.modalidade === "debito" ? "Débito" : "Crédito";
+  if (l.tipo === "notas" || l.tipo === "cliente_outras_notas")
+    return [l.responsavel, l.destinoNota].filter(Boolean).join(" · ") || "Nota";
+  return l.observacao || (l.combustivel ? l.combustivel : "");
+};
+
+export function FechamentoCaixaTela({ sessao, onVoltar, onConfirmar, onAdicionarSangria }: Props) {
+  const [textoLeituras, setTextoLeituras] = useState<LeiturasTexto>(leiturasVazias);
   const [contadoTexto, setContadoTexto] = useState("");
+  const [sangriaTexto, setSangriaTexto] = useState("");
+  const [descricaoSangria, setDescricaoSangria] = useState("Depósito");
   const [observacao, setObservacao] = useState("");
-  const [confirmou, setConfirmou] = useState(false);
-  const [erros, setErros] = useState<string[]>([]);
+  const [revisado, setRevisado] = useState(false);
+  const [erro, setErro] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
 
-  const leituras = validarLeiturasFinais(finaisTexto, sessao.abertura.leituras);
+  const leituras = validarLeiturasFinais(textoLeituras, sessao.abertura.leituras);
   const contado = parseNumeroBR(contadoTexto);
-  const conferencia = useMemo(() => leituras.ok && contado !== null
-    ? conferirCaixa(sessao, leituras.valores, contado) : null,
-    [sessao, finaisTexto, contadoTexto]);
-  const resumo = conferencia?.resumo;
-  const sumario = useMemo(() => {
-    const itens = new Map<string, { valor: number; qtd: number }>();
-    for (const l of sessao.lancamentos) {
-      const atual = itens.get(l.tipo) ?? { valor: 0, qtd: 0 };
-      atual.valor += l.valor;
-      atual.qtd++;
-      itens.set(l.tipo, atual);
+  const esperado = dinheiroEsperado(sessao);
+  const conferencia = useMemo(
+    () => leituras.ok && contado !== null && contado >= 0
+      ? conferirCaixa(sessao, leituras.valores, contado) : null,
+    [sessao, textoLeituras, contadoTexto],
+  );
+  const resumo = useMemo(
+    () => calcularResumo(sessao.lancamentos, sessao.abertura.precos),
+    [sessao.lancamentos, sessao.abertura.precos],
+  );
+
+  const produtos = useMemo(() => {
+    const mapa = new Map<string, { nome: string; qtd: number; valor: number }>();
+    for (const l of sessao.lancamentos.filter(l => l.tipo === "produto_posto")) {
+      const chave = l.produtoId || l.produtoNome || l.id;
+      const anterior = mapa.get(chave) || { nome: l.produtoNome || "Produto", qtd: 0, valor: 0 };
+      anterior.qtd += l.quantidadeProduto || 1;
+      anterior.valor += l.valor;
+      mapa.set(chave, anterior);
     }
-    return TIPOS.filter(t => itens.has(t.id)).map(t => ({ ...t, ...itens.get(t.id)! }));
+    return [...mapa.values()];
   }, [sessao.lancamentos]);
 
-  const setLeitura = (combustivel: "gasolina" | "diesel", bomba: "bomba1" | "bomba2", valor: string) => {
-    setFinaisTexto(old => ({
-      ...old,
-      [combustivel]: { ...old[combustivel], [bomba]: valor.replace(/[^\d.,]/g, "") },
-    }));
-    setConfirmou(false);
-    setErros([]);
-  };
+  const listaTipo = (tipo: TipoLancamento) =>
+    sessao.lancamentos.filter(l => tipo === "notas"
+      ? l.tipo === "notas" || l.tipo === "cliente_outras_notas"
+      : l.tipo === tipo);
 
-  const submeter = (e: FormEvent) => {
-    e.preventDefault();
-    const problemas = !leituras.ok ? [...leituras.erros] : [];
-    if (contado === null || !Number.isFinite(contado) || contado < 0) {
-      problemas.push("Informe o dinheiro contado no caixa (pode ser R$ 0,00).");
-    }
-    if (!confirmou) problemas.push("Confirme que revisou todas as informações.");
-    if (problemas.length || !leituras.ok || contado === null) {
-      setErros(problemas);
+  const registrarSangria = () => {
+    const valor = parseNumeroBR(sangriaTexto);
+    if (valor === null || valor <= 0 || !Number.isFinite(valor)) {
+      setErro(["Informe um valor de sangria maior que zero."]);
       return;
     }
-    const conferenciaFinal = conferirCaixa(sessao, leituras.valores, contado);
+    if (valor > 999999999) {
+      setErro(["Informe uma sangria dentro do limite permitido."]);
+      return;
+    }
+    onAdicionarSangria(Math.round(valor * 100) / 100, descricaoSangria.trim() || "Última sangria");
+    setSangriaTexto("");
+    setDescricaoSangria("Depósito");
+    setRevisado(false);
+    setErro([]);
+  };
+
+  const atualizarLeitura = (c: "gasolina" | "diesel", b: "bomba1" | "bomba2", texto: string) => {
+    setTextoLeituras(prev => ({
+      ...prev, [c]: { ...prev[c], [b]: texto.replace(/[^\d.,]/g, "") },
+    }));
+    setRevisado(false);
+    setErro([]);
+  };
+
+  const finalizar = () => {
+    const problemas = leituras.ok ? [] : [...leituras.erros];
+    if (contado === null || contado < 0 || !Number.isFinite(contado))
+      problemas.push("Informe o valor contado no Caixa.");
+    if (!revisado) problemas.push("Confirme que revisou o fechamento.");
+    if (problemas.length || !leituras.ok || contado === null) {
+      setErro(problemas);
+      return;
+    }
     setSalvando(true);
     const ok = onConfirmar({
       fechadoEm: new Date().toISOString(),
       leiturasFinais: leituras.valores,
       dinheiroContado: contado,
       observacao: observacao.trim(),
-      conferencia: conferenciaFinal,
+      conferencia: conferirCaixa(sessao, leituras.valores, contado),
     });
     if (!ok) {
       setSalvando(false);
-      setErros(["Não foi possível salvar o fechamento. O caixa permanece aberto; confira o armazenamento do navegador."]);
+      setErro(["Falha ao salvar. O caixa continua aberto e seus lançamentos foram mantidos."]);
     }
   };
 
-  const situacaoDinheiro = conferencia?.situacaoDinheiro;
-  const situacaoBombas = conferencia?.situacaoBombas;
+  const soma = (tipo: TipoLancamento) => listaTipo(tipo).reduce((v, l) => v + l.valor, 0);
+  const vendidoGasolina = resumo.valorGasolina;
+  const vendidoDiesel = resumo.valorDiesel;
 
   return (
     <div className="min-h-screen bg-background pb-10">
-      <div className="border-b border-border bg-card">
+      <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onVoltar} aria-label="Voltar ao caixa"
-              className="grid h-10 w-10 place-items-center rounded-xl border border-border transition-colors hover:bg-secondary">
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-total text-primary-foreground"><Fuel className="h-6 w-6" /></span>
             <div>
-              <p className="eyebrow text-muted-foreground">Posto Almeida · Caixa da pista</p>
-              <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Fechamento do caixa</h1>
+              <p className="eyebrow text-muted-foreground">Posto Almeida</p>
+              <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Fechamento do Caixa</h1>
             </div>
           </div>
-          <span className="rounded-full bg-warning-soft px-3 py-1.5 text-xs font-bold text-warning-foreground">Conferência do turno</span>
+          <div className="flex flex-wrap gap-2 text-sm font-semibold">
+            <span className="rounded-full bg-secondary px-4 py-2">Data: {sessao.abertura.data}</span>
+            <span className="rounded-full bg-secondary px-4 py-2">{turnoInfo(sessao.abertura.turno).descricao}</span>
+            <span className="rounded-full bg-secondary px-4 py-2">Frentista: {sessao.abertura.frentista}</span>
+          </div>
         </div>
-      </div>
+      </header>
 
-      <form onSubmit={submeter} className="mx-auto max-w-[1600px] space-y-5 px-4 py-5 sm:px-6">
-        <div className="rounded-3xl bg-hero p-6 text-ink-foreground shadow-lift">
-          <p className="eyebrow text-ink-muted">Resumo do turno</p>
-          <h2 className="mt-1 font-display text-3xl font-extrabold">{sessao.abertura.frentista}</h2>
-          <p className="mt-1 text-sm text-ink-muted">{turnoInfo(sessao.abertura.turno).descricao} · {sessao.abertura.data}</p>
-          <p className="mt-1 text-xs text-ink-muted">Aberto em {formatDataHora(sessao.abertura.abertoEm)}</p>
-          <p className="mt-4 text-sm text-ink-muted">Confira as leituras e o dinheiro. Nenhum lançamento será perdido se voltar ao PDV antes de confirmar.</p>
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-2">
-          <section className={painel}>
-            <div className="mb-4 flex items-center gap-2">
-              <Gauge className="h-5 w-5 text-primary" />
-              <h2 className="font-display text-2xl font-bold">Leituras finais das bombas</h2>
-            </div>
-            <p className="mb-5 text-sm text-muted-foreground">Digite os totalizadores finais de cada bomba, sem reduzir a leitura inicial.</p>
-            {(["gasolina", "diesel"] as const).map(c => (
-              <div key={c} className="mb-5 last:mb-0">
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold">
-                  <Droplet fill="currentColor" className={"h-4 w-4 " + (c === "gasolina" ? "text-gasolina" : "text-diesel")} />
-                  {c === "gasolina" ? "Gasolina" : "Diesel"}
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {(["bomba1", "bomba2"] as const).map((b, i) => (
-                    <label key={b} className="block rounded-2xl border border-border bg-secondary/30 p-3">
-                      <span className="eyebrow text-muted-foreground">Bomba {i + 1}</span>
-                      <span className="mb-2 mt-1 block text-xs text-muted-foreground num">
-                        Inicial: {sessao.abertura.leituras[c][b].toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
-                      </span>
-                      <input required inputMode="decimal" placeholder="Leitura final"
-                        aria-label={"Leitura final " + c + " bomba " + (i + 1)}
-                        value={finaisTexto[c][b]}
-                        onChange={e => setLeitura(c, b, e.target.value)}
-                        className={campo} />
-                    </label>
+      <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5 sm:px-6">
+        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] table-fixed border-collapse text-sm">
+              <thead>
+                <tr className="bg-hero text-ink-foreground">
+                  {categorias.map(c => <th key={c.tipo} className="border-r border-ink-border px-3 py-3 text-center font-bold last:border-r-0">{c.titulo}</th>)}
+                  <th className="px-3 py-3 text-center font-bold">Total por categoria</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="align-top">
+                  {categorias.map(c => (
+                    <td key={c.tipo} className="h-40 border-r border-b border-border p-2 align-top last:border-r-0">
+                      <div className="max-h-44 space-y-1 overflow-y-auto">
+                        {listaTipo(c.tipo).length === 0 && <p className="py-2 text-center text-muted-foreground">—</p>}
+                        {listaTipo(c.tipo).map(l => (
+                          <div key={l.id} className="border-b border-border/60 py-1.5 text-center last:border-0">
+                            <p className="font-bold num">{real(l.valor)}</p>
+                            <p className="break-words text-xs text-muted-foreground">{nomeLancamento(l)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
                   ))}
-                </div>
-              </div>
-            ))}
-          </section>
+                  <td className="border-b border-border bg-primary-soft p-3 text-center align-middle">
+                    <p className="eyebrow text-muted-foreground">Vendas e notas</p>
+                    <p className="mt-1 font-display text-2xl font-bold num">{real(resumo.totalVendas)}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">Produtos separados abaixo</p>
+                  </td>
+                </tr>
+                <tr className="bg-hero text-ink-foreground">
+                  {categorias.map(c => (
+                    <td key={c.tipo} className="border-r border-ink-border px-2 py-2.5 text-center font-display font-bold num">
+                      {real(soma(c.tipo))}
+                    </td>
+                  ))}
+                  <td className="px-2 py-2.5 text-center font-bold">Resumo do turno</td>
+                </tr>
+                <tr className="text-xs text-muted-foreground">
+                  {categorias.map(c => <td key={c.tipo} className="border-r border-border px-2 py-2 text-center">
+                    {listaTipo(c.tipo).length} lançamento(s)
+                    {c.tipo === "cartoes" && (
+                      <p className="mt-1">
+                        {listaTipo("cartoes").filter(l => l.modalidade === "debito").length} débito ·{" "}
+                        {listaTipo("cartoes").filter(l => l.modalidade === "credito").length} crédito
+                      </p>
+                    )}
+                  </td>)}
+                  <td className="px-2 py-2 text-center">Valores atualizados</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-          <section className={painel}>
-            <div className="mb-4 flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-primary" />
-              <h2 className="font-display text-2xl font-bold">Conferência do dinheiro</h2>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Painel titulo="Adicionar última sangria" icon={<MinusCircle className="h-5 w-5" />}>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="min-w-[130px] flex-1">
+                <span className="mb-1 block text-xs font-bold text-muted-foreground">Valor da sangria (R$)</span>
+                <input inputMode="decimal" value={sangriaTexto}
+                  onChange={e => setSangriaTexto(e.target.value.replace(/[^\d.,]/g, ""))}
+                  placeholder="0,00" className={normal + " w-full font-display num"} />
+              </label>
+              <label className="min-w-[160px] flex-1">
+                <span className="mb-1 block text-xs font-bold text-muted-foreground">Destino / observação</span>
+                <input value={descricaoSangria} maxLength={120}
+                  onChange={e => setDescricaoSangria(e.target.value)}
+                  className={normal + " w-full"} />
+              </label>
+              <button type="button" onClick={registrarSangria}
+                className="inline-flex items-center gap-2 rounded-xl bg-total px-5 py-2.5 font-bold text-primary-foreground transition-all hover:brightness-110">
+                <Plus className="h-4 w-4" /> Adicionar
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Info label="Troco inicial" value={formatBRL(sessao.abertura.trocoInicial)} />
-              <Info label="Dinheiro esperado (estimado)" value={formatBRL(dinheiroEsperado(sessao))} />
-            </div>
-            <p className="my-4 text-xs leading-relaxed text-muted-foreground">
-              Estimativa = troco inicial + recebimentos em Dinheiro − sangrias − despesas monetárias identificadas.
-              Pix, cartões e notas a prazo não entram na contagem física.
-              Confira se as retiradas realmente saíram em dinheiro antes de concluir.
+            <p className="mt-3 text-xs text-muted-foreground">
+              A sangria será registrada no histórico e descontada da conferência do Caixa.
             </p>
-            <label className="block">
-              <span className="eyebrow text-muted-foreground">Dinheiro contado no fechamento</span>
-              <div className="mt-1.5 flex items-center rounded-2xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30">
-                <span className="font-display text-xl font-bold text-muted-foreground">R$</span>
-                <input required inputMode="decimal" placeholder="0,00" value={contadoTexto}
-                  onChange={e => { setContadoTexto(e.target.value.replace(/[^\d.,]/g, "")); setConfirmou(false); }}
-                  className="w-full bg-transparent px-2 py-3 font-display text-3xl font-bold num outline-none" />
-              </div>
-            </label>
-            {conferencia && (
-              <div className={"mt-4 rounded-2xl border p-4 " +
-                (situacaoDinheiro === "certo" ? "border-success/30 bg-success-soft text-success"
-                  : "border-warning/30 bg-warning-soft text-warning-foreground")}>
-                <p className="text-sm font-bold">Dinheiro: {situacaoDinheiro === "certo" ? "Tudo certo" : situacaoDinheiro === "faltando" ? "Faltando" : "Sobrando"}</p>
-                <p className="mt-1 font-display text-2xl font-bold num">{formatBRL(Math.abs(conferencia.diferencaDinheiro))}</p>
-              </div>
-            )}
-          </section>
+          </Painel>
+          <Painel titulo="Litros Vendidos (Giro de Bombas)" icon={<Fuel className="h-5 w-5" />}>
+            <Linha label="Gasolina" valor={formatLitros(resumo.litrosGasolina)} destaque="text-gasolina" />
+            <Linha label="Diesel" valor={formatLitros(resumo.litrosDiesel)} destaque="text-diesel" />
+            <p className="mt-2 text-xs text-muted-foreground">Apenas litros vendidos; não inclui produtos.</p>
+          </Painel>
         </div>
 
-        <section className={painel}>
-          <div className="mb-4 flex items-center gap-2">
-            <Droplet className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-2xl font-bold">Conferência dos combustíveis</h2>
-          </div>
-          {!leituras.ok ? (
-            <p className="rounded-xl bg-secondary p-4 text-sm text-muted-foreground">Preencha as quatro leituras finais para visualizar a diferença entre os totalizadores e os abastecimentos registrados.</p>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {(["gasolina", "diesel"] as const).map(c => {
-                const medido = (leituras.valores[c].bomba1 - sessao.abertura.leituras[c].bomba1) +
-                  (leituras.valores[c].bomba2 - sessao.abertura.leituras[c].bomba2);
-                const lancados = sessao.lancamentos.filter(l => l.combustivel === c &&
-                  (tipoInfo(l.tipo).categoria === "venda" || l.tipo === "despesas"))
-                  .reduce((s, l) => s + (typeof l.litros === "number" ? l.litros : l.valor / sessao.abertura.precos[c]), 0);
-                const delta = Math.round((medido - lancados) * 1000) / 1000;
-                return (
-                  <div key={c} className="rounded-2xl border border-border bg-secondary/30 p-4">
-                    <p className="font-display text-xl font-bold">{c === "gasolina" ? "Gasolina" : "Diesel"}</p>
-                    <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm">
-                      <span>Medido nas bombas: <b className="num">{formatLitros(medido)}</b></span>
-                      <span>Registrado: <b className="num">{formatLitros(lancados)}</b></span>
-                    </div>
-                    <p className={"mt-3 font-display text-lg font-bold " + (Math.abs(delta) < 0.001 ? "text-success" : "text-warning-foreground")}>
-                      {Math.abs(delta) < 0.001 ? "Conferido · 0,000 L" :
-                        (delta > 0 ? "Faltam lançamentos: " : "Lançamentos excedem bomba: ") + formatLitros(Math.abs(delta))}
-                    </p>
-                  </div>
-                );
-              })}
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <Painel titulo="Leituras Finais das Bombas" icon={<Fuel className="h-5 w-5" />}>
+            {(["gasolina", "diesel"] as const).map(c => (["bomba1", "bomba2"] as const).map((b, indice) => (
+              <label key={c + b} className="flex items-center justify-between gap-2 border-b border-border py-2 last:border-b-0">
+                <span className="text-sm font-semibold">{c === "gasolina" ? "Gasolina" : "Diesel"} · Bomba {indice + 1}</span>
+                <input aria-label={"Leitura final " + c + " bomba " + (indice + 1)}
+                  required inputMode="decimal" placeholder="Leitura final"
+                  value={textoLeituras[c][b]}
+                  onChange={e => atualizarLeitura(c, b, e.target.value)}
+                  className={normal + " w-36 text-right num"} />
+              </label>
+            )))}
+            <p className="mt-2 text-xs text-muted-foreground">A leitura final deve ser igual ou superior à inicial.</p>
+          </Painel>
+
+          <Painel titulo="Produtos do Posto" icon={<ShoppingBasket className="h-5 w-5" />}>
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-secondary text-left text-xs">
+                <tr><th className="p-2">Produto</th><th className="p-2 text-center">Quantidade</th><th className="p-2 text-right">Total</th></tr>
+              </thead>
+              <tbody>
+                {produtos.map((p, i) => (
+                  <tr key={i} className="border-b border-border">
+                    <td className="px-2 py-2">{p.nome}</td>
+                    <td className="px-2 py-2 text-center num">{p.qtd}</td>
+                    <td className="px-2 py-2 text-right num">{real(p.valor)}</td>
+                  </tr>
+                ))}
+                {produtos.length === 0 && <tr><td colSpan={3} className="py-5 text-center text-muted-foreground">Nenhum produto vendido</td></tr>}
+              </tbody>
+              <tfoot className="bg-hero font-bold text-ink-foreground">
+                <tr><td colSpan={2} className="p-2">Total Produtos do Posto</td>
+                  <td className="p-2 text-right num">{real(soma("produto_posto"))}</td></tr>
+              </tfoot>
+            </table>
+            <p className="mt-2 text-xs text-muted-foreground">Valor exibido separadamente. Não entra na diferença do Caixa.</p>
+          </Painel>
+
+          <Painel titulo="Totais (para conferência)" icon={<Wallet className="h-5 w-5" />}>
+            <Linha label="Vendas de gasolina" valor={real(vendidoGasolina)} />
+            {vendidoDiesel > 0 && <Linha label="Vendas de diesel (fora do Caixa)" valor={real(vendidoDiesel)} />}
+            <Linha label="Notas (incluídas nas vendas)" valor={real(soma("notas"))} />
+            <Linha label="Cartões (débito e crédito)" valor={real(soma("cartoes"))} />
+            <Linha label="Pix (maquininha e manual)" valor={real(soma("pix_maquininha") + soma("pix_manual"))} />
+            <Linha label="Descontos" valor={"− " + real(soma("descontos"))} />
+            <Linha label="Sangrias" valor={"− " + real(soma("sangria"))} />
+            <Linha label="Troco inicial" valor={real(sessao.abertura.trocoInicial)} />
+            <div className="mt-2 rounded-xl bg-primary-soft px-3 py-3">
+              <Linha label="Valor esperado no Caixa" valor={real(esperado)} forte />
             </div>
-          )}
-          {conferencia && (
-            <p className={"mt-3 text-sm font-bold " + (situacaoBombas === "certo" ? "text-success" : "text-warning-foreground")}>
-              {situacaoBombas === "certo" ? "Leituras e registros de combustível conferem." : "Há divergência nos litros. Verifique os lançamentos antes de confirmar."}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Conferência: troco + vendas de gasolina − pagamentos de gasolina sem dinheiro − descontos − sangrias.
             </p>
-          )}
-        </section>
+          </Painel>
+        </div>
 
-        <section className={painel}>
-          <div className="mb-4 flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-2xl font-bold">Resumo financeiro completo</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Info label="Vendas e notas" value={formatBRL(sessao.lancamentos.filter(l => tipoInfo(l.tipo).categoria === "venda").reduce((s,l)=>s+l.valor,0))} />
-            <Info label="Descontos" value={formatBRL(sessao.lancamentos.filter(l => l.tipo === "descontos").reduce((s,l)=>s+l.valor,0))} />
-            <Info label="Saídas" value={formatBRL(sessao.lancamentos.filter(l => tipoInfo(l.tipo).categoria === "saida").reduce((s,l)=>s+l.valor,0))} />
-            <Info label="Total do painel" value={formatBRL(resumo?.total ??
-              sessao.lancamentos.filter(l => tipoInfo(l.tipo).categoria === "venda").reduce((s,l)=>s+l.valor,0) -
-              sessao.lancamentos.filter(l => l.tipo === "descontos").reduce((s,l)=>s+l.valor,0))} />
-          </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {sumario.map(item => (
-              <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.qtd} lançamento(s)</p>
-                </div>
-                <p className="font-display font-bold num">{formatBRL(item.valor)}</p>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+          <Painel titulo="Caixa (Apenas Vendas de Gasolina)" icon={<ClipboardCheck className="h-5 w-5" />}>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-secondary p-3 text-center">
+                <p className="text-sm font-bold">Valor esperado</p>
+                <p className="mt-2 font-display text-xl font-bold num">{real(esperado)}</p>
               </div>
-            ))}
-            {sumario.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lançamento registrado.</p>}
-          </div>
-        </section>
-
-        <section className={painel}>
-          <h2 className="font-display text-2xl font-bold">Todos os lançamentos do turno</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Confira cada registro antes de encerrar. Para corrigir, volte ao PDV.</p>
-          <div className="mt-4 max-h-[440px] space-y-2 overflow-y-auto">
-            {sessao.lancamentos.map((l: Lancamento) => (
-              <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-secondary/30 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="font-bold">{tipoInfo(l.tipo).label} {l.funcionario ? "· " + l.funcionario : ""}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDataHora(l.criadoEm)}
-                    {l.combustivel ? " · " + (l.combustivel === "diesel" ? "Diesel" : "Gasolina") +
-                      " · " + formatLitros(typeof l.litros === "number" ? l.litros : l.valor / sessao.abertura.precos[l.combustivel]) : ""}
-                    {l.modalidade ? " · " + (l.modalidade === "prazo" ? "A prazo" : l.modalidade === "avista" ? "À vista" : l.modalidade) : ""}
-                    {l.observacao ? " · " + l.observacao : ""}
-                  </p>
-                </div>
-                <p className="font-display font-bold num">{formatBRL(l.valor)}</p>
+              <label className="rounded-xl bg-secondary p-3 text-center">
+                <span className="text-sm font-bold">Valor contado</span>
+                <input inputMode="decimal" required value={contadoTexto} placeholder="0,00"
+                  onChange={e => { setContadoTexto(e.target.value.replace(/[^\d.,]/g, "")); setRevisado(false); setErro([]); }}
+                  className={normal + " mt-2 w-full text-center font-display text-lg num"} />
+              </label>
+              <div className={"rounded-xl p-3 text-center " +
+                (conferencia?.situacaoDinheiro === "certo" ? "bg-success-soft text-success" : "bg-warning-soft text-warning-foreground")}>
+                <p className="text-sm font-bold">Diferença</p>
+                <p className="mt-2 font-display text-xl font-bold num">
+                  {conferencia ? real(Math.abs(conferencia.diferencaDinheiro)) : "—"}
+                </p>
+                <p className="text-xs font-bold">
+                  {!conferencia ? "Aguardando" :
+                    conferencia.situacaoDinheiro === "certo" ? "Tudo certo" :
+                    conferencia.situacaoDinheiro === "faltando" ? "Faltando" : "Sobrando"}
+                </p>
               </div>
-            ))}
-            {sessao.lancamentos.length === 0 && <p className="py-8 text-center text-muted-foreground">Nenhum lançamento no turno.</p>}
-          </div>
-        </section>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Produtos do Posto e vendas de diesel não entram nesta diferença.</p>
+          </Painel>
 
-        <section className={painel}>
-          <div className="flex items-center gap-2">
-            <BadgeCheck className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-2xl font-bold">Confirmação do funcionário</h2>
+          <div className={"flex flex-col items-center justify-center rounded-2xl border p-5 text-center shadow-card " +
+            (!conferencia ? "border-border bg-card" :
+              conferencia.situacaoDinheiro === "certo" && conferencia.situacaoBombas === "certo"
+                ? "border-success/40 bg-success-soft" : "border-warning/40 bg-warning-soft")}>
+            {conferencia?.situacaoDinheiro === "certo" && conferencia.situacaoBombas === "certo" ?
+              <CheckCircle2 className="h-12 w-12 text-success" /> :
+              <AlertTriangle className="h-12 w-12 text-muted-foreground" />}
+            <h2 className="mt-2 font-display text-xl font-bold">Resultado do Caixa</h2>
+            <p className="mt-2 text-2xl font-extrabold">
+              {!conferencia ? "Aguardando conferência" :
+                conferencia.situacaoDinheiro === "certo" && conferencia.situacaoBombas === "certo"
+                  ? "TUDO CERTO!" : "Verificar divergências"}
+            </p>
+            {conferencia && conferencia.situacaoBombas === "divergente" &&
+              <p className="mt-2 text-xs">Bombas: diferenças de {formatLitros(conferencia.diferencaLitros.gasolina)} em gasolina e {formatLitros(conferencia.diferencaLitros.diesel)} em diesel.</p>}
           </div>
-          <label className="mt-4 block">
-            <span className="eyebrow text-muted-foreground">Observação do fechamento (opcional)</span>
-            <textarea value={observacao} maxLength={500} rows={3} onChange={e => setObservacao(e.target.value)}
-              placeholder="Explique qualquer diferença, falta, sobra ou ocorrência do turno…"
-              className={campo + " mt-1.5 font-sans font-normal"} />
-          </label>
-          <label className="mt-4 flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-4">
-            <input type="checkbox" checked={confirmou} onChange={e => setConfirmou(e.target.checked)}
+        </div>
+
+        <section className="rounded-2xl border border-border bg-card px-4 py-3 shadow-card">
+          <label className="block text-sm font-bold">Observações do fechamento (opcional)</label>
+          <textarea rows={2} maxLength={500} value={observacao}
+            onChange={e => setObservacao(e.target.value)}
+            placeholder="Anote qualquer ocorrência do turno..."
+            className={normal + " mt-2 w-full font-normal"} />
+          <label className="mt-3 flex items-start gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={revisado} onChange={e => setRevisado(e.target.checked)}
               className="mt-1 h-4 w-4 accent-primary" />
-            <span className="text-sm font-semibold">Revisei os lançamentos, os valores, o dinheiro contado e as quatro leituras finais. Confirmo o fechamento deste turno, inclusive eventuais divergências apresentadas.</span>
+            Conferi os lançamentos, o dinheiro contado e as leituras finais e confirmo eventuais diferenças.
           </label>
-          {conferencia && (situacaoDinheiro !== "certo" || situacaoBombas !== "certo") && (
-            <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-warning-foreground">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              Existem divergências. Elas serão registradas no relatório de fechamento.
-            </p>
-          )}
-          {erros.length > 0 && (
-            <div role="alert" className="mt-4 rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
-              {erros.map((erro,i) => <p key={i}>{erro}</p>)}
+          {erro.length > 0 && (
+            <div role="alert" className="mt-3 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm font-semibold text-danger">
+              {erro.map((e, i) => <p key={i}>{e}</p>)}
             </div>
           )}
-          <div className="mt-5 flex flex-wrap justify-end gap-3">
-            <button type="button" onClick={onVoltar}
-              className="rounded-xl border border-border px-5 py-3 text-sm font-bold transition-colors hover:bg-secondary">
-              Voltar e corrigir lançamentos
-            </button>
-            <button type="submit" disabled={salvando || !confirmou || !leituras.ok || contado === null || contado < 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-total px-6 py-3 text-sm font-bold text-primary-foreground shadow-glow transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
-              <LockKeyhole className="h-4 w-4" />
-              Confirmar e fechar caixa
-            </button>
-          </div>
         </section>
-      </form>
+
+        <div className="flex flex-wrap justify-center gap-3 pb-3">
+          <button type="button" onClick={onVoltar}
+            className="inline-flex min-w-[230px] items-center justify-center gap-2 rounded-xl border-2 border-primary px-6 py-3 font-bold text-primary hover:bg-primary-soft">
+            <ArrowLeft className="h-5 w-5" /> Voltar e corrigir
+          </button>
+          <button type="button" onClick={finalizar}
+            disabled={salvando || !revisado || !leituras.ok || contado === null || contado < 0}
+            className="inline-flex min-w-[230px] items-center justify-center gap-2 rounded-xl bg-success px-6 py-3 font-bold text-white shadow-glow transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
+            <LockKeyhole className="h-5 w-5" /> Finalizar Caixa
+          </button>
+        </div>
+      </main>
     </div>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Painel({ titulo, icon, children }: { titulo: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-border bg-secondary/30 px-4 py-3">
-      <p className="eyebrow text-muted-foreground">{label}</p>
-      <p className="mt-2 truncate font-display text-xl font-bold num">{value}</p>
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+      <div className={titulo === "Caixa (Apenas Vendas de Gasolina)" ? tituloCss() : tituloCss()}>
+        {icon}<h2 className="font-display text-lg font-bold">{titulo}</h2>
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+function tituloCss() { return titulo; }
+
+function Linha({ label, valor, forte, destaque }: { label: string; valor: string; forte?: boolean; destaque?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-b border-border py-2 last:border-b-0">
+      <span className={"text-sm " + (forte ? "font-bold" : "font-semibold")}>{label}</span>
+      <span className={"shrink-0 font-display font-bold num " + (destaque || "")}>{valor}</span>
     </div>
   );
 }
