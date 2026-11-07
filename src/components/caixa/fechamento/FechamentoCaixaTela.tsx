@@ -300,7 +300,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
                 <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
               </div>
               <div className="rounded-xl bg-secondary p-3 text-center">
-                <p className="text-sm font-bold">Valor apurado automaticamente</p>
+                <p className="text-sm font-bold">Valor contado (automático)</p>
                 <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
               </div>
               <div className={"rounded-xl p-3 text-center " +
