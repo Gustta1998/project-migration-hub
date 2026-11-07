@@ -59,7 +59,7 @@ describe("fechamento de caixa", () => {
       diesel: { bomba1: 310, bomba2: 400 },
     };
     const esperado = dinheiroEsperado(sessao);
-    expect(esperado).toBeCloseTo(202.9);
+    expect(esperado).toBeCloseTo(222.9);
     const conferencia = conferirCaixa(sessao, finais, esperado);
     expect(conferencia.litrosMedidos.gasolina).toBe(15);
     expect(conferencia.litrosLancados.gasolina).toBe(15);
@@ -85,5 +85,32 @@ describe("fechamento de caixa", () => {
     const conferencia = conferirCaixa(sessao, finais, dinheiroEsperado(sessao));
     expect(conferencia.situacaoBombas).toBe("divergente");
     expect(conferencia.diferencaLitros.gasolina).toBe(1);
+  });
+});
+
+describe("conferência do caixa exclusivo de gasolina", () => {
+  it("não considera produtos do posto nem recebimentos de diesel na diferença", () => {
+    const dados: SessaoCaixa = {
+      ...sessao,
+      lancamentos: [
+        { id: "g", tipo: "dinheiro", combustivel: "gasolina", valor: 100, criadoEm: iso },
+        { id: "p", tipo: "pix_manual", combustivel: "gasolina", valor: 80, criadoEm: iso },
+        { id: "n", tipo: "notas", combustivel: "gasolina", valor: 60, criadoEm: iso },
+        { id: "x", tipo: "produto_posto", produtoId: "geladinho", valor: 15, criadoEm: iso },
+        { id: "d", tipo: "pix_maquininha", combustivel: "diesel", valor: 1000, criadoEm: iso },
+        { id: "s", tipo: "sangria", valor: 25, criadoEm: iso },
+        { id: "a", tipo: "descontos", valor: 5, criadoEm: iso },
+      ],
+    };
+    // Troco (200) + venda em dinheiro de gasolina (100) - sangria (25) - desconto (5).
+    expect(dinheiroEsperado(dados)).toBe(270);
+    const comOutrosProdutos: SessaoCaixa = {
+      ...dados,
+      lancamentos: [
+        ...dados.lancamentos,
+        { id: "x2", tipo: "produto_posto", valor: 125, criadoEm: iso },
+      ],
+    };
+    expect(dinheiroEsperado(comOutrosProdutos)).toBe(270);
   });
 });
