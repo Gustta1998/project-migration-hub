@@ -42,7 +42,6 @@ const nomeLancamento = (l: Lancamento) => {
 
 export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirmar, onAdicionarSangria }: Props) {
   const [textoLeituras, setTextoLeituras] = useState<LeiturasTexto>(leiturasVazias);
-  const [contadoTexto, setContadoTexto] = useState("");
   const [sangriaTexto, setSangriaTexto] = useState("");
   const [descricaoSangria, setDescricaoSangria] = useState("Depósito");
   const [observacao, setObservacao] = useState("");
@@ -51,14 +50,12 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
   const [salvando, setSalvando] = useState(false);
 
   const leituras = validarLeiturasFinais(textoLeituras, sessao.abertura.leituras);
-  const contado = parseNumeroBR(contadoTexto);
   const giro = leituras.ok ? giroMedido(sessao.abertura.leituras, leituras.valores) : null;
   const esperado = leituras.ok ? dinheiroEsperado(sessao, leituras.valores, trocoRetirado) : null;
-  const conferencia = useMemo(
-    () => leituras.ok && contado !== null && contado >= 0
-      ? conferirCaixa(sessao, leituras.valores, contado, trocoRetirado) : null,
-    [sessao, textoLeituras, contadoTexto, trocoRetirado],
-  );
+  // Apuração automática: não representa contagem física independente.
+  const conferencia = leituras.ok && esperado !== null
+    ? conferirCaixa(sessao, leituras.valores, esperado, trocoRetirado)
+    : null;
   const resumo = useMemo(
     () => calcularResumo(sessao.lancamentos, sessao.abertura.precos),
     [sessao.lancamentos, sessao.abertura.precos],
@@ -108,10 +105,8 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
 
   const finalizar = () => {
     const problemas = leituras.ok ? [] : [...leituras.erros];
-    if (contado === null || contado < 0 || !Number.isFinite(contado))
-      problemas.push("Informe o valor contado no Caixa.");
     if (!revisado) problemas.push("Confirme que revisou o fechamento.");
-    if (problemas.length || !leituras.ok || contado === null) {
+    if (problemas.length || !leituras.ok || esperado === null) {
       setErro(problemas);
       return;
     }
@@ -119,10 +114,11 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
     const ok = onConfirmar({
       fechadoEm: new Date().toISOString(),
       leiturasFinais: leituras.valores,
-      dinheiroContado: contado,
+      dinheiroContado: esperado,
+      contagemAutomatica: true,
       trocoRetirado,
       observacao: observacao.trim(),
-      conferencia: conferirCaixa(sessao, leituras.valores, contado, trocoRetirado),
+      conferencia: conferirCaixa(sessao, leituras.valores, esperado, trocoRetirado),
     });
     if (!ok) {
       setSalvando(false);
@@ -303,40 +299,35 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
                 <p className="text-sm font-bold">Valor esperado</p>
                 <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
               </div>
-              <label className="rounded-xl bg-secondary p-3 text-center">
-                <span className="text-sm font-bold">Valor contado</span>
-                <input inputMode="decimal" required value={contadoTexto} placeholder="0,00"
-                  onChange={e => { setContadoTexto(e.target.value.replace(/[^\d.,]/g, "")); setRevisado(false); setErro([]); }}
-                  className={normal + " mt-2 w-full text-center font-display text-lg num"} />
-              </label>
+              <div className="rounded-xl bg-secondary p-3 text-center">
+                <p className="text-sm font-bold">Valor apurado automaticamente</p>
+                <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
+              </div>
               <div className={"rounded-xl p-3 text-center " +
-                (conferencia?.situacaoDinheiro === "certo" ? "bg-success-soft text-success" : "bg-warning-soft text-warning-foreground")}>
-                <p className="text-sm font-bold">Diferença</p>
+                (conferencia?.situacaoBombas === "certo" ? "bg-success-soft text-success" : "bg-warning-soft text-warning-foreground")}>
+                <p className="text-sm font-bold">Diferença de litros registrados</p>
                 <p className="mt-2 font-display text-xl font-bold num">
-                  {conferencia ? real(Math.abs(conferencia.diferencaDinheiro)) : "—"}
+                  {conferencia ? formatLitros(Math.abs(conferencia.diferencaLitros.gasolina)) : "—"}
                 </p>
-                <p className="text-xs font-bold">
-                  {!conferencia ? "Aguardando" :
-                    conferencia.situacaoDinheiro === "certo" ? "Tudo certo" :
-                    conferencia.situacaoDinheiro === "faltando" ? "Faltando" : "Sobrando"}
-                </p>
+                <p className="text-xs font-bold">{!conferencia ? "Aguardando leituras" :
+                  Math.abs(conferencia.diferencaLitros.gasolina) < 0.001 ? "Gasolina conferida" : "Conferir lançamentos"}</p>
               </div>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">Produtos do Posto e vendas de diesel não entram nesta diferença.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Apuração automática pelas bombas e lançamentos, inclusive última sangria. Não houve contagem física independente. Produtos do Posto ficam separados.</p>
           </Painel>
 
           <div className={"flex flex-col items-center justify-center rounded-2xl border p-5 text-center shadow-card " +
             (!conferencia ? "border-border bg-card" :
-              conferencia.situacaoDinheiro === "certo" && conferencia.situacaoBombas === "certo"
+              conferencia.situacaoBombas === "certo"
                 ? "border-success/40 bg-success-soft" : "border-warning/40 bg-warning-soft")}>
-            {conferencia?.situacaoDinheiro === "certo" && conferencia.situacaoBombas === "certo" ?
+            {conferencia?.situacaoBombas === "certo" ?
               <CheckCircle2 className="h-12 w-12 text-success" /> :
               <AlertTriangle className="h-12 w-12 text-muted-foreground" />}
             <h2 className="mt-2 font-display text-xl font-bold">Resultado do Caixa</h2>
             <p className="mt-2 text-2xl font-extrabold">
               {!conferencia ? "Aguardando conferência" :
-                conferencia.situacaoDinheiro === "certo" && conferencia.situacaoBombas === "certo"
-                  ? "TUDO CERTO!" : "Verificar divergências"}
+                conferencia.situacaoBombas === "certo"
+                  ? "LANÇAMENTOS CONFERIDOS" : "Verificar divergências"}
             </p>
             {conferencia && conferencia.situacaoBombas === "divergente" &&
               <p className="mt-2 text-xs">Bombas: diferenças de {formatLitros(conferencia.diferencaLitros.gasolina)} em gasolina e {formatLitros(conferencia.diferencaLitros.diesel)} em diesel.</p>}
@@ -352,7 +343,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
           <label className="mt-3 flex items-start gap-2 text-sm font-semibold">
             <input type="checkbox" checked={revisado} onChange={e => setRevisado(e.target.checked)}
               className="mt-1 h-4 w-4 accent-primary" />
-            Conferi os lançamentos, o dinheiro contado e as leituras finais e confirmo eventuais diferenças.
+            Conferi os lançamentos, o valor apurado automaticamente e as leituras finais e confirmo eventuais diferenças.
           </label>
           {erro.length > 0 && (
             <div role="alert" className="mt-3 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm font-semibold text-danger">
@@ -367,7 +358,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
             <ArrowLeft className="h-5 w-5" /> Voltar e corrigir
           </button>
           <button type="button" onClick={finalizar}
-            disabled={salvando || !revisado || !leituras.ok || contado === null || contado < 0}
+            disabled={salvando || !revisado || !leituras.ok || esperado === null}
             className="inline-flex min-w-[230px] items-center justify-center gap-2 rounded-xl bg-success px-6 py-3 font-bold text-white shadow-glow transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
             <LockKeyhole className="h-5 w-5" /> Finalizar Caixa
           </button>
