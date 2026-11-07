@@ -16,6 +16,7 @@ export type TipoLancamento =
   | "pix_manual"
   | "cartoes"
   | "dinheiro"
+  | "produto_posto"
   | "descontos"
   | "sangria"
   | "despesas"
@@ -38,6 +39,7 @@ export const TIPOS: TipoInfo[] = [
   { id: "pix_manual", label: "Pix manual", categoria: "venda", descricao: "Enviado direto ao patrão" },
   { id: "cartoes", label: "Cartões", categoria: "venda", descricao: "Débito ou crédito" },
   { id: "dinheiro", label: "Dinheiro", categoria: "venda", descricao: "Pagamento em espécie" },
+  { id: "produto_posto", label: "Produto Posto", categoria: "venda", descricao: "Freezer e lubrificantes" },
   { id: "cartao_frota", label: "Cartão Frota", categoria: "venda", descricao: "Frotas conveniadas" },
   { id: "fit_card", label: "Fit Card", categoria: "venda", descricao: "Cartão Fit" },
   { id: "notas", label: "Notas", categoria: "venda", descricao: "Notas autorizadas" },
@@ -59,6 +61,12 @@ export interface Lancamento {
   precoLitro?: number | undefined;
   responsavel?: string | undefined;
   destinoNota?: string | undefined;
+  /** Identificação de item do catálogo e quantidade vendida. */
+  produtoId?: string | undefined;
+  produtoNome?: string | undefined;
+  produtoCategoria?: "freezer" | "lubrificantes" | undefined;
+  quantidadeProduto?: number | undefined;
+  precoUnitarioProduto?: number | undefined;
   /** Dados estruturados para o futuro relatório mensal de funcionários do gerente. */
   funcionario?: Funcionario | undefined;
   tipoDespesaFuncionario?: TipoDespesaFuncionario | undefined;
