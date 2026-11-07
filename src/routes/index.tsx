@@ -105,7 +105,8 @@ function Caixa() {
             {ultimoFechamento.sessao.abertura.frentista} · {ultimoFechamento.sessao.abertura.data}
           </p>
           <div className="mt-5 space-y-2 rounded-2xl border border-border bg-secondary/40 p-4 text-left text-sm">
-            <p>Dinheiro: <strong>{conferencia.situacaoDinheiro === "certo" ? "Tudo certo" :
+            <p>Caixa: <strong>{ultimoFechamento.fechamento.contagemAutomatica ? "Valor apurado automaticamente (sem contagem física)" :
+              conferencia.situacaoDinheiro === "certo" ? "Tudo certo" :
               conferencia.situacaoDinheiro === "faltando" ? "Faltando" : "Sobrando"}</strong></p>
             <p>Bombas: <strong>{conferencia.situacaoBombas === "certo" ? "Conferidas" : "Divergência registrada"}</strong></p>
             <p className="text-xs text-muted-foreground">Fechamento armazenado no histórico local deste navegador.</p>
