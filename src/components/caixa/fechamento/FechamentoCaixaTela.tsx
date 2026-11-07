@@ -9,7 +9,7 @@ import {
 } from "@/lib/caixa";
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
 import {
-  conferirCaixa, dinheiroEsperado, giroMedido, leiturasVazias, validarLeiturasFinais,
+  avaliarSaldoCaixa, conferirCaixa, dinheiroEsperado, giroMedido, leiturasVazias, validarLeiturasFinais,
   type FechamentoCaixa, type LeiturasTexto,
 } from "@/lib/fechamento";
 
@@ -56,6 +56,10 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
   const conferencia = leituras.ok && esperado !== null
     ? conferirCaixa(sessao, leituras.valores, esperado, trocoRetirado)
     : null;
+  const saldoCaixa = conferencia
+    ? avaliarSaldoCaixa(conferencia.diferencaLitros.gasolina, sessao.abertura.precos.gasolina)
+    : null;
+
   const resumo = useMemo(
     () => calcularResumo(sessao.lancamentos, sessao.abertura.precos),
     [sessao.lancamentos, sessao.abertura.precos],
@@ -303,34 +307,52 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
                 <p className="text-sm font-bold">Valor contado (automático)</p>
                 <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
               </div>
-              <div className={"rounded-xl p-3 text-center " +
-                (conferencia?.situacaoBombas === "certo" ? "bg-success-soft text-success" : "bg-warning-soft text-warning-foreground")}>
-                <p className="text-sm font-bold">Diferença de litros registrados</p>
+              <div className={"rounded-xl border p-3 text-center " +
+                (!saldoCaixa ? "border-border bg-secondary" :
+                  saldoCaixa.saldo > 0 ? "border-success/40 bg-success-soft text-success" :
+                  saldoCaixa.saldo < 0 ? "border-danger/40 bg-danger/10 text-danger" :
+                    "border-success/40 bg-success-soft text-success")}>
+                <p className="text-sm font-bold">SALDO DO CAIXA</p>
                 <p className="mt-2 font-display text-xl font-bold num">
-                  {conferencia ? formatLitros(Math.abs(conferencia.diferencaLitros.gasolina)) : "—"}
+                  {!saldoCaixa ? "—" :
+                    (saldoCaixa.saldo < 0 ? "−" : saldoCaixa.saldo > 0 ? "+" : "") +
+                    real(Math.abs(saldoCaixa.saldo))}
                 </p>
-                <p className="text-xs font-bold">{!conferencia ? "Aguardando leituras" :
-                  Math.abs(conferencia.diferencaLitros.gasolina) < 0.001 ? "Gasolina conferida" : "Conferir lançamentos"}</p>
+                <p className="text-xs font-bold">
+                  {!saldoCaixa ? "Aguardando leituras" :
+                    saldoCaixa.saldo > 0 ? "SOBROU" :
+                    saldoCaixa.saldo < 0 ? "FALTOU" : "TUDO CERTO"}
+                </p>
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">Apuração automática pelas bombas e lançamentos, inclusive última sangria. Não houve contagem física independente. Produtos do Posto ficam separados.</p>
           </Painel>
 
           <div className={"flex flex-col items-center justify-center rounded-2xl border p-5 text-center shadow-card " +
-            (!conferencia ? "border-border bg-card" :
-              conferencia.situacaoBombas === "certo"
-                ? "border-success/40 bg-success-soft" : "border-warning/40 bg-warning-soft")}>
-            {conferencia?.situacaoBombas === "certo" ?
-              <CheckCircle2 className="h-12 w-12 text-success" /> :
-              <AlertTriangle className="h-12 w-12 text-muted-foreground" />}
+            (!saldoCaixa ? "border-border bg-card" :
+              saldoCaixa.status === "bom" ? "border-success/40 bg-success-soft" :
+              saldoCaixa.status === "regular" ? "border-warning/40 bg-warning-soft" :
+                "border-danger/40 bg-danger/10")}>
+            {!saldoCaixa ? <AlertTriangle className="h-12 w-12 text-muted-foreground" /> :
+              saldoCaixa.status === "bom" ? <CheckCircle2 className="h-12 w-12 text-success" /> :
+              <AlertTriangle className={"h-12 w-12 " +
+                (saldoCaixa.status === "regular" ? "text-warning-foreground" : "text-danger")} />}
             <h2 className="mt-2 font-display text-xl font-bold">Resultado do Caixa</h2>
-            <p className="mt-2 text-2xl font-extrabold">
-              {!conferencia ? "Aguardando conferência" :
-                conferencia.situacaoBombas === "certo"
-                  ? "LANÇAMENTOS CONFERIDOS" : "Verificar divergências"}
+            <p className={"mt-2 text-2xl font-extrabold " +
+              (!saldoCaixa ? "text-foreground" :
+                saldoCaixa.status === "bom" ? "text-success" :
+                saldoCaixa.status === "regular" ? "text-warning-foreground" : "text-danger")}>
+              {!saldoCaixa ? "Aguardando conferência" :
+                saldoCaixa.status === "bom" ? "CAIXA ESTÁ BOM" :
+                saldoCaixa.status === "regular" ? "CAIXA ESTÁ REGULAR" :
+                "VERIFICAR DIVERGÊNCIAS"}
             </p>
-            {conferencia && conferencia.situacaoBombas === "divergente" &&
-              <p className="mt-2 text-xs">Bombas: diferenças de {formatLitros(conferencia.diferencaLitros.gasolina)} em gasolina e {formatLitros(conferencia.diferencaLitros.diesel)} em diesel.</p>}
+            {saldoCaixa && (
+              <p className="mt-2 text-sm font-semibold">
+                Saldo do caixa: {(saldoCaixa.saldo < 0 ? "−" : saldoCaixa.saldo > 0 ? "+" : "") +
+                  real(Math.abs(saldoCaixa.saldo))}
+              </p>
+            )}
           </div>
         </div>
 
