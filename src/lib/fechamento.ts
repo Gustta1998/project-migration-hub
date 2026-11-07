@@ -6,6 +6,8 @@ export interface FechamentoCaixa {
   fechadoEm: string;
   leiturasFinais: LeiturasBombas;
   dinheiroContado: number;
+  /** Valor preenchido pelo cálculo automático, sem contagem física do numerário. */
+  contagemAutomatica?: boolean;
   trocoRetirado: boolean;
   observacao: string;
   conferencia: ConferenciaCaixa;
