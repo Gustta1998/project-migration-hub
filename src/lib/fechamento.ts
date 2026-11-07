@@ -72,30 +72,46 @@ export function validarLeiturasFinais(
 }
 
 /**
- * Conferência do CAIXA de gasolina (não inclui produtos e nem diesel).
- * Parte do total de vendas de gasolina e desconta as formas não monetárias,
- * notas a prazo, descontos e sangrias. O troco inicial é considerado.
- *
- * Os lançamentos de produtos do posto ficam em relatório independente e
- * nunca entram na diferença de gasolina.
+ * Giro medido pelos totalizadores. Preserva a precisão em milésimos de litro.
  */
-export function dinheiroEsperado(sessao: SessaoCaixa): number {
-  const gas = sessao.lancamentos.filter((l) => l.combustivel === "gasolina" &&
-    l.tipo !== "despesas");
-  const vendasGasolina = gas.reduce((s, l) => s + l.valor, 0);
-  const naoDinheiro = gas
-    .filter((l) => l.tipo !== "dinheiro" &&
-      (l.tipo === "pix_maquininha" || l.tipo === "pix_manual" ||
-        l.tipo === "cartoes" || l.tipo === "cartao_frota" ||
-        l.tipo === "fit_card" || l.tipo === "notas" ||
-        l.tipo === "cliente_outras_notas"))
-    .reduce((s, l) => s + l.valor, 0);
+export function giroMedido(iniciais: LeiturasBombas, finais: LeiturasBombas) {
+  return {
+    gasolina: arred(
+      finais.gasolina.bomba1 - iniciais.gasolina.bomba1 +
+      finais.gasolina.bomba2 - iniciais.gasolina.bomba2, 3),
+    diesel: arred(
+      finais.diesel.bomba1 - iniciais.diesel.bomba1 +
+      finais.diesel.bomba2 - iniciais.diesel.bomba2, 3),
+  };
+}
+
+/**
+ * Dinheiro esperado para a conferência da GASOLINA:
+ * troco inicial + (litros da bomba * preço da abertura)
+ * - pagamentos não realizados em espécie - notas a receber
+ * - despesas de gasolina - descontos - sangrias.
+ * Produto Posto e diesel não entram na diferença.
+ * Se finais não estiverem preenchidas, usa o valor lançado apenas como
+ * estimativa preliminar; o fechamento SEMPRE passa as leituras finais.
+ */
+export function dinheiroEsperado(sessao: SessaoCaixa, finais?: LeiturasBombas): number {
+  const gas = sessao.lancamentos.filter(l => l.combustivel === "gasolina");
+  const base = finais
+    ? giroMedido(sessao.abertura.leituras, finais).gasolina * sessao.abertura.precos.gasolina
+    : gas.filter(l => l.tipo !== "despesas").reduce((s, l) => s + l.valor, 0);
+  const semDinheiro = gas.filter(l =>
+    l.tipo === "pix_maquininha" || l.tipo === "pix_manual" ||
+    l.tipo === "cartoes" || l.tipo === "cartao_frota" ||
+    l.tipo === "fit_card" || l.tipo === "notas" ||
+    (l.tipo === "cliente_outras_notas" && l.modalidade !== "avista"));
+  const abatimentos = semDinheiro.reduce((s, l) => s + l.valor, 0);
+  const despesasGasolina = gas.filter(l => l.tipo === "despesas").reduce((s, l) => s + l.valor, 0);
   const descontos = sessao.lancamentos
-    .filter((l) => l.tipo === "descontos").reduce((s, l) => s + l.valor, 0);
+    .filter(l => l.tipo === "descontos").reduce((s, l) => s + l.valor, 0);
   const sangrias = sessao.lancamentos
-    .filter((l) => l.tipo === "sangria").reduce((s, l) => s + l.valor, 0);
-  return arred(sessao.abertura.trocoInicial + vendasGasolina -
-    naoDinheiro - descontos - sangrias);
+    .filter(l => l.tipo === "sangria").reduce((s, l) => s + l.valor, 0);
+  return arred(sessao.abertura.trocoInicial + base - abatimentos -
+    despesasGasolina - descontos - sangrias);
 }
 
 /** Compara a soma das quatro bombas com o combustível lançado em vendas e despesas. */
@@ -129,7 +145,7 @@ export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, conta
     diesel: arred(litrosMedidos.diesel - litrosLancados.diesel, 3),
   };
 
-  const esperado = dinheiroEsperado(sessao);
+  const esperado = dinheiroEsperado(sessao, finais);
   const diferencaDinheiro = arred(contado - esperado);
   const situacaoDinheiro = Math.abs(diferencaDinheiro) < 0.01
     ? "certo" : diferencaDinheiro < 0 ? "faltando" : "sobrando";
