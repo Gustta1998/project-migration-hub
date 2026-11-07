@@ -6,6 +6,7 @@ export interface FechamentoCaixa {
   fechadoEm: string;
   leiturasFinais: LeiturasBombas;
   dinheiroContado: number;
+  trocoRetirado: boolean;
   observacao: string;
   conferencia: ConferenciaCaixa;
 }
@@ -31,6 +32,7 @@ export interface ConferenciaCaixa {
   diferencaLitros: { gasolina: number; diesel: number };
   resumo: Resumo;
   dinheiroEsperado: number;
+  trocoRetirado: boolean;
   dinheiroContado: number;
   diferencaDinheiro: number;
   situacaoDinheiro: "certo" | "faltando" | "sobrando";
@@ -87,14 +89,16 @@ export function giroMedido(iniciais: LeiturasBombas, finais: LeiturasBombas) {
 
 /**
  * Dinheiro esperado para a conferência da GASOLINA:
- * troco inicial + (litros da bomba * preço da abertura)
- * - pagamentos não realizados em espécie - notas a receber
- * - despesas de gasolina - descontos - sangrias.
+ * (troco inicial somente quando NÃO foi retirado) +
+ * (litros da bomba * preço da abertura) - pagamentos não realizados
+ * em espécie - despesas de gasolina + descontos + sangrias.
+ * Os lançamentos de descontos e sangrias são SOMADOS à conferência
+ * conforme a regra operacional definida para este posto.
  * Produto Posto e diesel não entram na diferença.
  * Se finais não estiverem preenchidas, usa o valor lançado apenas como
  * estimativa preliminar; o fechamento SEMPRE passa as leituras finais.
  */
-export function dinheiroEsperado(sessao: SessaoCaixa, finais?: LeiturasBombas): number {
+export function dinheiroEsperado(sessao: SessaoCaixa, finais?: LeiturasBombas, trocoRetirado = false): number {
   const gas = sessao.lancamentos.filter(l => l.combustivel === "gasolina");
   const base = finais
     ? giroMedido(sessao.abertura.leituras, finais).gasolina * sessao.abertura.precos.gasolina
@@ -110,12 +114,13 @@ export function dinheiroEsperado(sessao: SessaoCaixa, finais?: LeiturasBombas): 
     .filter(l => l.tipo === "descontos").reduce((s, l) => s + l.valor, 0);
   const sangrias = sessao.lancamentos
     .filter(l => l.tipo === "sangria").reduce((s, l) => s + l.valor, 0);
-  return arred(sessao.abertura.trocoInicial + base - abatimentos -
-    despesasGasolina - descontos - sangrias);
+  const trocoNoCaixa = trocoRetirado ? 0 : sessao.abertura.trocoInicial;
+  return arred(trocoNoCaixa + base - abatimentos -
+    despesasGasolina + descontos + sangrias);
 }
 
 /** Compara a soma das quatro bombas com o combustível lançado em vendas e despesas. */
-export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, contado: number): ConferenciaCaixa {
+export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, contado: number, trocoRetirado = false): ConferenciaCaixa {
   const bombas: ConferenciaBomba[] = [];
   const litrosMedidos = { gasolina: 0, diesel: 0 };
   for (const combustivel of ["gasolina", "diesel"] as const) {
@@ -145,14 +150,14 @@ export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, conta
     diesel: arred(litrosMedidos.diesel - litrosLancados.diesel, 3),
   };
 
-  const esperado = dinheiroEsperado(sessao, finais);
+  const esperado = dinheiroEsperado(sessao, finais, trocoRetirado);
   const diferencaDinheiro = arred(contado - esperado);
   const situacaoDinheiro = Math.abs(diferencaDinheiro) < 0.01
     ? "certo" : diferencaDinheiro < 0 ? "faltando" : "sobrando";
   return {
     bombas, litrosMedidos, litrosLancados, diferencaLitros,
     resumo: calcularResumo(sessao.lancamentos, sessao.abertura.precos),
-    dinheiroEsperado: esperado, dinheiroContado: contado,
+    dinheiroEsperado: esperado, trocoRetirado, dinheiroContado: contado,
     diferencaDinheiro, situacaoDinheiro,
     situacaoBombas: Math.abs(diferencaLitros.gasolina) < 0.001 &&
       Math.abs(diferencaLitros.diesel) < 0.001 ? "certo" : "divergente",
