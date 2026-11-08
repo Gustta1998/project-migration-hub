@@ -76,7 +76,8 @@ export function totalPrestacaoCombustivel(sessao: SessaoCaixa): {
       .reduce((s, l) => s + l.valor, 0));
   }
   return {
-    total: arred(Object.values(categorias).reduce((s, valor) => s + valor, 0)),
+    // Sangria e despesas compõem a prestação do combustível; desconto reduz o valor final.
+    total: arred(Object.entries(categorias).reduce((s, [tipo, valor]) => s + (tipo === "descontos" ? -valor : valor), 0)),
     categorias,
   };
 }
