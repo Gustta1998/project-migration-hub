@@ -156,8 +156,6 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
   };
 
   const soma = (tipo: TipoLancamento) => listaTipo(tipo).reduce((v, l) => v + l.valor, 0);
-  const vendidoGasolina = resumo.valorGasolina;
-  const vendidoDiesel = resumo.valorDiesel;
 
   return (
     <div className="min-h-screen bg-background pb-10">
