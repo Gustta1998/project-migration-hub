@@ -1,5 +1,5 @@
 import { parseNumeroBR } from "./abertura";
-import { calcularResumo, litrosDe, type Lancamento, type Precos, type Resumo } from "./caixa";
+import { calcularResumo, litrosDe, type Resumo } from "./caixa";
 import type { LeiturasBombas, SessaoCaixa } from "./abertura";
 
 export interface FechamentoCaixa {
@@ -39,19 +39,72 @@ export interface ConferenciaCaixa {
   diferencaDinheiro: number;
   situacaoDinheiro: "certo" | "faltando" | "sobrando";
   situacaoBombas: "certo" | "divergente";
+  prestacaoCombustivel?: ReturnType<typeof apurarFechamento>;
 }
 
-/** Classifica o saldo em reais da gasolina, pela diferença entre giro medido e litros lançados. */
-export function avaliarSaldoCaixa(diferencaLitrosGasolina: number, precoGasolina: number): {
+/** Classificação por valor monetário já apurado. */
+export function avaliarSaldoCaixa(saldoEmReais: number): {
   saldo: number;
   status: "bom" | "regular" | "divergente";
 } {
-  // Converte a diferença de litros a centavos para avaliar limites de R$ 5 e R$ 10.
-  const saldo = Math.round((diferencaLitrosGasolina * precoGasolina + Number.EPSILON) * 100) / 100;
+  const saldo = Math.round((saldoEmReais + Number.EPSILON) * 100) / 100;
   const absoluto = Math.abs(saldo);
   return {
     saldo,
     status: absoluto <= 5 ? "bom" : absoluto <= 10 ? "regular" : "divergente",
+  };
+}
+
+/** Total de todas as formas de prestação de contas do combustível.
+ * Sangria representa dinheiro de combustível depositado. A linha "Dinheiro"
+ * legada é omitida para não somar novamente o que já foi sangrado.
+ * Produtos do Posto são conferidos separadamente.
+ */
+export function totalPrestacaoCombustivel(sessao: SessaoCaixa): {
+  total: number;
+  categorias: Record<string, number>;
+} {
+  const tipos = [
+    "sangria", "pix_maquininha", "pix_manual", "cartoes",
+    "descontos", "notas", "cliente_outras_notas", "despesas",
+    "cartao_frota", "fit_card",
+  ] as const;
+  const categorias: Record<string, number> = {};
+  for (const tipo of tipos) {
+    categorias[tipo] = arred(sessao.lancamentos
+      .filter(l => l.tipo === tipo)
+      .reduce((s, l) => s + l.valor, 0));
+  }
+  return {
+    total: arred(Object.values(categorias).reduce((s, valor) => s + valor, 0)),
+    categorias,
+  };
+}
+
+export function totalBombasCombustivel(sessao: SessaoCaixa, finais: LeiturasBombas): {
+  gasolina: number; diesel: number; total: number;
+} {
+  const giro = giroMedido(sessao.abertura.leituras, finais);
+  const gasolina = arred(giro.gasolina * sessao.abertura.precos.gasolina);
+  const diesel = arred(giro.diesel * sessao.abertura.precos.diesel);
+  return { gasolina, diesel, total: arred(gasolina + diesel) };
+}
+
+/** Saldo positivo indica que a prestação supera o faturamento medido;
+ * saldo negativo indica que a prestação é inferior ao valor das bombas.
+ * Troco não retirado é exibido nos dois lados e não distorce a diferença.
+ */
+export function apurarFechamento(sessao: SessaoCaixa, finais: LeiturasBombas, trocoRetirado: boolean) {
+  const prestacao = totalPrestacaoCombustivel(sessao);
+  const bombas = totalBombasCombustivel(sessao, finais);
+  const troco = trocoRetirado ? 0 : sessao.abertura.trocoInicial;
+  const totalPrestado = arred(prestacao.total + troco);
+  const totalEsperado = arred(bombas.total + troco);
+  return {
+    ...prestacao, bombas,
+    trocoIncluido: troco,
+    totalPrestado, totalEsperado,
+    saldo: arred(totalPrestado - totalEsperado),
   };
 }
 
@@ -103,36 +156,13 @@ export function giroMedido(iniciais: LeiturasBombas, finais: LeiturasBombas) {
   };
 }
 
-/**
- * Dinheiro esperado para a conferência da GASOLINA:
- * (troco inicial somente quando NÃO foi retirado) +
- * (litros da bomba * preço da abertura) - pagamentos não realizados
- * em espécie - despesas de gasolina + descontos + sangrias.
- * Os lançamentos de descontos e sangrias são SOMADOS à conferência
- * conforme a regra operacional definida para este posto.
- * Produto Posto e diesel não entram na diferença.
- * Se finais não estiverem preenchidas, usa o valor lançado apenas como
- * estimativa preliminar; o fechamento SEMPRE passa as leituras finais.
+/** Valor esperado apurado diretamente pelas bombas de gasolina e diesel.
+ * A prestação de contas é calculada separadamente, em apurarFechamento.
  */
 export function dinheiroEsperado(sessao: SessaoCaixa, finais?: LeiturasBombas, trocoRetirado = false): number {
-  const gas = sessao.lancamentos.filter(l => l.combustivel === "gasolina");
-  const base = finais
-    ? giroMedido(sessao.abertura.leituras, finais).gasolina * sessao.abertura.precos.gasolina
-    : gas.filter(l => l.tipo !== "despesas").reduce((s, l) => s + l.valor, 0);
-  const semDinheiro = gas.filter(l =>
-    l.tipo === "pix_maquininha" || l.tipo === "pix_manual" ||
-    l.tipo === "cartoes" || l.tipo === "cartao_frota" ||
-    l.tipo === "fit_card" || l.tipo === "notas" ||
-    (l.tipo === "cliente_outras_notas" && l.modalidade !== "avista"));
-  const abatimentos = semDinheiro.reduce((s, l) => s + l.valor, 0);
-  const despesasGasolina = gas.filter(l => l.tipo === "despesas").reduce((s, l) => s + l.valor, 0);
-  const descontos = sessao.lancamentos
-    .filter(l => l.tipo === "descontos").reduce((s, l) => s + l.valor, 0);
-  const sangrias = sessao.lancamentos
-    .filter(l => l.tipo === "sangria").reduce((s, l) => s + l.valor, 0);
-  const trocoNoCaixa = trocoRetirado ? 0 : sessao.abertura.trocoInicial;
-  return arred(trocoNoCaixa + base - abatimentos -
-    despesasGasolina + descontos + sangrias);
+  if (!finais) return 0;
+  const apuracao = apurarFechamento(sessao, finais, trocoRetirado);
+  return apuracao.totalEsperado;
 }
 
 /** Compara a soma das quatro bombas com o combustível lançado em vendas e despesas. */
@@ -166,14 +196,16 @@ export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, conta
     diesel: arred(litrosMedidos.diesel - litrosLancados.diesel, 3),
   };
 
-  const esperado = dinheiroEsperado(sessao, finais, trocoRetirado);
-  const diferencaDinheiro = arred(contado - esperado);
+  const apuracao = apurarFechamento(sessao, finais, trocoRetirado);
+  const esperado = apuracao.totalEsperado;
+  const diferencaDinheiro = apuracao.saldo;
   const situacaoDinheiro = Math.abs(diferencaDinheiro) < 0.01
     ? "certo" : diferencaDinheiro < 0 ? "faltando" : "sobrando";
   return {
     bombas, litrosMedidos, litrosLancados, diferencaLitros,
     resumo: calcularResumo(sessao.lancamentos, sessao.abertura.precos),
-    dinheiroEsperado: esperado, trocoRetirado, dinheiroContado: contado,
+    dinheiroEsperado: esperado, trocoRetirado, dinheiroContado: apuracao.totalPrestado,
+    prestacaoCombustivel: apuracao,
     diferencaDinheiro, situacaoDinheiro,
     situacaoBombas: Math.abs(diferencaLitros.gasolina) < 0.001 &&
       Math.abs(diferencaLitros.diesel) < 0.001 ? "certo" : "divergente",
