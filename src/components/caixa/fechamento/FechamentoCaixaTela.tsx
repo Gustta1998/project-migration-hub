@@ -31,9 +31,32 @@ const categorias: { tipo: TipoLancamento; titulo: string }[] = [
   { tipo: "cartoes", titulo: "Cartões" },
   { tipo: "descontos", titulo: "Descontos" },
   { tipo: "notas", titulo: "Notas" },
+  { tipo: "despesas", titulo: "Despesas" },
 ];
 
 const nomeLancamento = (l: Lancamento) => {
+  if (l.tipo === "despesas") {
+    // Identifique explicitamente a retirada para conferência e relatório do gerente.
+    const origem = l.funcionario || (l.tipoDespesaGeral === "outros" ? "Outros" : "Despesa");
+    const natureza = l.tipoDespesaFuncionario
+      ? l.tipoDespesaFuncionario === "vale" ? "Vale"
+        : l.tipoDespesaFuncionario === "dinheiro" ? "Dinheiro"
+        : l.tipoDespesaFuncionario === "gasolina" ? "Gasolina" : "Diesel"
+      : l.combustivel === "gasolina" ? "Gasolina"
+      : l.combustivel === "diesel" ? "Diesel" : "";
+    const detalhes = l.descricaoDespesa || l.observacao || "";
+    const partes = [origem, natureza];
+    if (l.combustivel && typeof l.litros === "number") partes.push(formatLitros(l.litros));
+    if (detalhes && !detalhes.startsWith(origem + " · ")) partes.push(detalhes);
+    else if (detalhes.startsWith(origem + " · ")) {
+      // Já inclui nome e modalidade; evita repeti-los na mesma célula.
+      const resto = detalhes.slice((origem + " · ").length).split(" · ").filter(
+        detalhe => detalhe !== natureza && !partes.includes(detalhe),
+      );
+      partes.push(...resto);
+    }
+    return partes.filter(Boolean).join(" · ");
+  }
   if (l.tipo === "cartoes") return l.modalidade === "debito" ? "Débito" : "Crédito";
   if (l.tipo === "notas" || l.tipo === "cliente_outras_notas")
     return [l.responsavel, l.destinoNota].filter(Boolean).join(" · ") || "Nota";
@@ -156,7 +179,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
       <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5 sm:px-6">
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] table-fixed border-collapse text-sm">
+            <table className="w-full min-w-[1160px] table-fixed border-collapse text-sm">
               <thead>
                 <tr className="bg-hero text-ink-foreground">
                   {categorias.map(c => <th key={c.tipo} className="border-r border-ink-border px-3 py-3 text-center font-bold last:border-r-0">{c.titulo}</th>)}
