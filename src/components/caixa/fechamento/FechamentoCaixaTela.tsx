@@ -9,7 +9,7 @@ import {
 } from "@/lib/caixa";
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
 import {
-  avaliarSaldoCaixa, conferirCaixa, dinheiroEsperado, giroMedido, leiturasVazias, validarLeiturasFinais,
+  apurarFechamento, avaliarSaldoCaixa, conferirCaixa, giroMedido, leiturasVazias, validarLeiturasFinais,
   type FechamentoCaixa, type LeiturasTexto,
 } from "@/lib/fechamento";
 
@@ -74,13 +74,15 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
 
   const leituras = validarLeiturasFinais(textoLeituras, sessao.abertura.leituras);
   const giro = leituras.ok ? giroMedido(sessao.abertura.leituras, leituras.valores) : null;
-  const esperado = leituras.ok ? dinheiroEsperado(sessao, leituras.valores, trocoRetirado) : null;
+  const apuracao = leituras.ok ? apurarFechamento(sessao, leituras.valores, trocoRetirado) : null;
+  const esperado = apuracao?.totalEsperado ?? null;
+  const prestado = apuracao?.totalPrestado ?? null;
   // Apuração automática: não representa contagem física independente.
   const conferencia = leituras.ok && esperado !== null
-    ? conferirCaixa(sessao, leituras.valores, esperado, trocoRetirado)
+    ? conferirCaixa(sessao, leituras.valores, prestado ?? 0, trocoRetirado)
     : null;
-  const saldoCaixa = conferencia
-    ? avaliarSaldoCaixa(conferencia.diferencaLitros.gasolina, sessao.abertura.precos.gasolina)
+  const saldoCaixa = apuracao
+    ? avaliarSaldoCaixa(apuracao.saldo)
     : null;
 
   const resumo = useMemo(
@@ -141,11 +143,11 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
     const ok = onConfirmar({
       fechadoEm: new Date().toISOString(),
       leiturasFinais: leituras.valores,
-      dinheiroContado: esperado,
+      dinheiroContado: prestado ?? 0,
       contagemAutomatica: true,
       trocoRetirado,
       observacao: observacao.trim(),
-      conferencia: conferirCaixa(sessao, leituras.valores, esperado, trocoRetirado),
+      conferencia: conferirCaixa(sessao, leituras.valores, prestado ?? 0, trocoRetirado),
     });
     if (!ok) {
       setSalvando(false);
@@ -253,7 +255,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               </button>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              A sangria será registrada no histórico e somada à conferência do Caixa.
+              A sangria é o dinheiro de combustível depositado. Será somada à prestação de contas do turno.
             </p>
           </Painel>
           <Painel titulo="Litros Vendidos (Giro de Bombas)" icon={<Fuel className="h-5 w-5" />}>
@@ -302,33 +304,36 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
           </Painel>
 
           <Painel titulo="Totais (para conferência)" icon={<Wallet className="h-5 w-5" />}>
-            <Linha label="Gasolina apurada nas bombas" valor={giro ? real(giro.gasolina * sessao.abertura.precos.gasolina) : "Aguardando leituras finais"} />
-            {vendidoDiesel > 0 && <Linha label="Vendas de diesel (fora do Caixa)" valor={real(vendidoDiesel)} />}
+            <Linha label="Gasolina apurada nas bombas" valor={apuracao ? real(apuracao.bombas.gasolina) : "Aguardando leituras finais"} />
+            <Linha label="Diesel apurado nas bombas" valor={apuracao ? real(apuracao.bombas.diesel) : "Aguardando leituras finais"} />
             <Linha label="Notas (incluídas nas vendas)" valor={real(soma("notas"))} />
             <Linha label="Cartões (débito e crédito)" valor={real(soma("cartoes"))} />
             <Linha label="Pix (maquininha e manual)" valor={real(soma("pix_maquininha") + soma("pix_manual"))} />
             <Linha label="Descontos" valor={"+ " + real(soma("descontos"))} />
             <Linha label="Sangrias" valor={"+ " + real(soma("sangria"))} />
+            <Linha label="Despesas" valor={"+ " + real(soma("despesas"))} />
+            <Linha label="Cartão Frota + Fit Card" valor={"+ " + real(soma("cartao_frota") + soma("fit_card"))} />
             <Linha label={trocoRetirado ? "Troco inicial (retirado)" : "Troco inicial (no caixa)"} valor={trocoRetirado ? real(0) : real(sessao.abertura.trocoInicial)} />
             <div className="mt-2 rounded-xl bg-primary-soft px-3 py-3">
-              <Linha label="Valor esperado no Caixa" valor={esperado === null ? "Aguardando leituras finais" : real(esperado)} forte />
+              <Linha label="Total apurado nas bombas" valor={esperado === null ? "Aguardando leituras finais" : real(esperado)} forte />
+              <Linha label="Total da prestação de contas" valor={prestado === null ? "Aguardando leituras finais" : real(prestado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: troco (somente se não retirado) + (litros medidos de gasolina × preço) − pagamentos não recebidos em espécie − despesas de gasolina + descontos + sangrias.
+              Conferência: somar sangrias, Pix, cartões, descontos, notas, despesas, Cartão Frota e Fit Card; comparar com gasolina + diesel medidos nas bombas. Produtos do Posto separados. O troco não retirado aparece nos dois lados e não altera a diferença.
             </p>
           </Painel>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-          <Painel titulo="Caixa (Apenas Vendas de Gasolina)" icon={<ClipboardCheck className="h-5 w-5" />}>
+          <Painel titulo="Caixa (Conferência do Combustível)" icon={<ClipboardCheck className="h-5 w-5" />}>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl bg-secondary p-3 text-center">
-                <p className="text-sm font-bold">Valor esperado</p>
+                <p className="text-sm font-bold">Total das bombas</p>
                 <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
               </div>
               <div className="rounded-xl bg-secondary p-3 text-center">
-                <p className="text-sm font-bold">Valor contado (automático)</p>
-                <p className="mt-2 font-display text-xl font-bold num">{esperado === null ? "—" : real(esperado)}</p>
+                <p className="text-sm font-bold">Total registrado</p>
+                <p className="mt-2 font-display text-xl font-bold num">{prestado === null ? "—" : real(prestado)}</p>
               </div>
               <div className={"rounded-xl border p-3 text-center " +
                 (!saldoCaixa ? "border-border bg-secondary" :
@@ -348,7 +353,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
                 </p>
               </div>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">Apuração automática pelas bombas e lançamentos, inclusive última sangria. Não houve contagem física independente. Produtos do Posto ficam separados.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Saldo = prestação de contas − vendas de combustível apuradas nas bombas. Inclui gasolina e diesel. Produtos do Posto permanecem separados.</p>
           </Painel>
 
           <div className={"flex flex-col items-center justify-center rounded-2xl border p-5 text-center shadow-card " +
