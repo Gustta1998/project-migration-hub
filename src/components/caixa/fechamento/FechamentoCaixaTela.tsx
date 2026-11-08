@@ -307,7 +307,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
             <Linha label="Notas (incluídas nas vendas)" valor={real(soma("notas"))} />
             <Linha label="Cartões (débito e crédito)" valor={real(soma("cartoes"))} />
             <Linha label="Pix (maquininha e manual)" valor={real(soma("pix_maquininha") + soma("pix_manual"))} />
-            <Linha label="Descontos" valor={"+ " + real(soma("descontos"))} />
+            <Linha label="Descontos" valor={"− " + real(soma("descontos"))} />
             <Linha label="Sangrias" valor={"+ " + real(soma("sangria"))} />
             <Linha label="Despesas" valor={"+ " + real(soma("despesas"))} />
             <Linha label="Cartão Frota + Fit Card" valor={"+ " + real(soma("cartao_frota") + soma("fit_card"))} />
@@ -317,7 +317,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               <Linha label="Total da prestação de contas" valor={prestado === null ? "Aguardando leituras finais" : real(prestado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: somar sangrias, Pix, cartões, descontos, notas, despesas, Cartão Frota e Fit Card; comparar com gasolina + diesel medidos nas bombas. Produtos do Posto separados. O troco não retirado aparece nos dois lados e não altera a diferença.
+              Conferência: somar sangrias (dinheiro do combustível depositado), Pix, cartões, notas, despesas, Cartão Frota e Fit Card; subtrair descontos. Comparar com gasolina + diesel apurados nas bombas. Produtos do Posto ficam separados. O troco não retirado aparece nos dois lados, sem mudar a diferença.
             </p>
           </Painel>
         </div>
