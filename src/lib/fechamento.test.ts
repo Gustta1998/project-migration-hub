@@ -64,9 +64,9 @@ describe("fechamento conforme prestação de contas do Posto Almeida", () => {
     });
   });
 
-  it("soma todas as formas de prestação inclusive descontos, sangrias, despesas, frota e Fit Card", () => {
+  it("soma sangrias e despesas, mas subtrai descontos na prestação", () => {
     const p = totalPrestacaoCombustivel(s);
-    expect(p.total).toBe(290);
+    expect(p.total).toBe(270);
     expect(p.categorias.sangria).toBe(100);
     expect(p.categorias.descontos).toBe(10);
     expect(p.categorias.despesas).toBe(20);
@@ -86,23 +86,23 @@ describe("fechamento conforme prestação de contas do Posto Almeida", () => {
     const extra: SessaoCaixa = {
       ...s, lancamentos: [...s.lancamentos, lancar("sangria", 30)],
     };
-    expect(totalPrestacaoCombustivel(extra).total).toBe(320);
+    expect(totalPrestacaoCombustivel(extra).total).toBe(300);
     expect(apurarFechamento(extra, finais, true).saldo - apurarFechamento(s, finais, true).saldo).toBe(30);
   });
 
   it("com troco retirado: compara prestação com giro das bombas", () => {
     const a = apurarFechamento(s, finais, true);
-    expect(a.totalPrestado).toBe(290);
+    expect(a.totalPrestado).toBe(270);
     expect(a.totalEsperado).toBe(186.25);
-    expect(a.saldo).toBe(103.75);
+    expect(a.saldo).toBe(83.75);
     expect(dinheiroEsperado(s, finais, true)).toBe(186.25);
   });
 
   it("com troco no caixa: soma troco aos dois lados, sem alterar a diferença", () => {
     const a = apurarFechamento(s, finais, false);
-    expect(a.totalPrestado).toBe(490);
+    expect(a.totalPrestado).toBe(470);
     expect(a.totalEsperado).toBe(386.25);
-    expect(a.saldo).toBe(103.75);
+    expect(a.saldo).toBe(83.75);
   });
 
   it("mais valor nas bombas do que na prestação indica falta", () => {
@@ -112,9 +112,9 @@ describe("fechamento conforme prestação de contas do Posto Almeida", () => {
 
   it("relatório de conferência usa diferença financeira real em vez de valores iguais automáticos", () => {
     const c = conferirCaixa(s, finais, apurarFechamento(s, finais, true).totalPrestado, true);
-    expect(c.diferencaDinheiro).toBe(103.75);
+    expect(c.diferencaDinheiro).toBe(83.75);
     expect(c.situacaoDinheiro).toBe("sobrando");
-    expect(c.prestacaoCombustivel?.totalPrestado).toBe(290);
+    expect(c.prestacaoCombustivel?.totalPrestado).toBe(270);
   });
 
   it("classifica os limites de bom, regular e divergente em valores positivos e negativos", () => {
@@ -131,5 +131,30 @@ describe("fechamento conforme prestação de contas do Posto Almeida", () => {
       ...finais, diesel: { ...finais.diesel, bomba1: 311 },
     };
     expect(totalBombasCombustivel(s, maisDiesel).total).toBe(193.94);
+  });
+});
+
+describe("desconto reduz o fechamento sem alterar o giro das bombas", () => {
+  it("reduz em 14 reais o saldo ao lançar desconto de 14 reais", () => {
+    const base = apurarFechamento(s, finais, true);
+    const comDesconto: SessaoCaixa = {
+      ...s, lancamentos: [...s.lancamentos, lancar("descontos", 14)],
+    };
+    const novo = apurarFechamento(comDesconto, finais, true);
+    expect(novo.saldo - base.saldo).toBe(-14);
+    expect(novo.bombas.total).toBe(base.bombas.total);
+  });
+
+  it("sangria e despesa entram positivamente na prestação sem duplicar dinheiro legado", () => {
+    const base = totalPrestacaoCombustivel(s).total;
+    const adicionais: SessaoCaixa = {
+      ...s, lancamentos: [
+        ...s.lancamentos,
+        lancar("sangria", 400),
+        lancar("despesas", 100),
+        lancar("dinheiro", 400),
+      ],
+    };
+    expect(totalPrestacaoCombustivel(adicionais).total - base).toBe(500);
   });
 });
