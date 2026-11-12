@@ -190,6 +190,14 @@ export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, conta
       litrosLancados[l.combustivel] += litrosDe(l, sessao.abertura.precos);
     }
   }
+  // A parte da gasolina depositada em sangrias detalhadas representa
+  // gasolina vendida em dinheiro, não uma segunda venda.
+  // Diesel em dinheiro já foi registrado no tipo venda_diesel_dinheiro.
+  if (sessao.abertura.precos.gasolina > 0) {
+    litrosLancados.gasolina += sessao.lancamentos
+      .filter(l => l.tipo === "sangria" && typeof l.sangriaGasolina === "number")
+      .reduce((s, l) => s + (l.sangriaGasolina ?? 0) / sessao.abertura.precos.gasolina, 0);
+  }
   litrosLancados.gasolina = arred(litrosLancados.gasolina, 3);
   litrosLancados.diesel = arred(litrosLancados.diesel, 3);
   const diferencaLitros = {
