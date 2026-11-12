@@ -1,35 +1,41 @@
 import type { Lancamento } from "./caixa";
 
-const centavos = (v: number) => Math.round((v + Number.EPSILON) * 100);
+const centavos = (n: number) => Math.round((n + Number.EPSILON) * 100);
 
-/** Diesel vendido em dinheiro ainda não atribuído a uma sangria detalhada.
- * Sangrias legadas sem discriminação não podem ser divididas com segurança.
+/**
+ * Regra do Posto Almeida:
+ * toda sangria é dinheiro de combustível depositado;
+ * o diesel é identificado pelo lançamento "Venda Diesel Dinheiro";
+ * o restante das sangrias corresponde a gasolina.
+ *
+ * A divisão é CUMULATIVA, não individual por depósito. Quando um diesel em
+ * dinheiro é lançado depois de uma sangria, o painel recalcula a separação.
+ * Nunca soma a venda diesel novamente na prestação (o valor já está na sangria).
  */
-export function dieselPendenteDeposito(lancamentos: Lancamento[]): number {
-  const vendido = lancamentos
-    .filter(l => l.tipo === "venda_diesel_dinheiro")
-    .reduce((v, l) => v + centavos(l.valor), 0);
-  const depositado = lancamentos
-    .filter(l => l.tipo === "sangria" && typeof l.sangriaDiesel === "number")
-    .reduce((v, l) => v + centavos(l.sangriaDiesel ?? 0), 0);
-  return Math.max(0, (vendido - depositado) / 100);
-}
-
-export function separarSangria(total: number, diesel: number) {
-  if (!Number.isFinite(total) || !Number.isFinite(diesel)) return null;
-  const t = centavos(total), d = centavos(diesel);
-  if (t <= 0 || d < 0 || d > t) return null;
-  return { gasolina: (t - d) / 100, diesel: d / 100, total: t / 100 };
-}
-
 export function totaisSangriaCombustivel(lancamentos: Lancamento[]) {
-  let gasolina = 0, diesel = 0, semDetalhe = 0;
-  for (const l of lancamentos.filter(x => x.tipo === "sangria")) {
-    if (typeof l.sangriaDiesel === "number" && typeof l.sangriaGasolina === "number" &&
-        Math.abs(l.sangriaDiesel + l.sangriaGasolina - l.valor) < 0.011) {
-      gasolina += centavos(l.sangriaGasolina);
-      diesel += centavos(l.sangriaDiesel);
-    } else semDetalhe += centavos(l.valor);
-  }
-  return { gasolina: gasolina / 100, diesel: diesel / 100, semDetalhe: semDetalhe / 100 };
+  const sangriasCentavos = lancamentos
+    .filter(l => l.tipo === "sangria")
+    .reduce((sum, l) => sum + centavos(l.valor), 0);
+  const dieselVendidoCentavos = lancamentos
+    .filter(l => l.tipo === "venda_diesel_dinheiro")
+    .reduce((sum, l) => sum + centavos(l.valor), 0);
+  const dieselCentavos = Math.min(sangriasCentavos, dieselVendidoCentavos);
+  return {
+    gasolina: (sangriasCentavos - dieselCentavos) / 100,
+    diesel: dieselCentavos / 100,
+    semDetalhe: 0,
+    totalSangrias: sangriasCentavos / 100,
+    dieselVendido: dieselVendidoCentavos / 100,
+    dieselNaoDepositado: Math.max(0, dieselVendidoCentavos - sangriasCentavos) / 100,
+  };
+}
+
+export function dieselPendenteDeposito(lancamentos: Lancamento[]) {
+  return totaisSangriaCombustivel(lancamentos).dieselNaoDepositado;
+}
+
+/** Divide a litragem da gasolina depositada; diesel já é lançado na venda. */
+export function litrosGasolinaSangrias(lancamentos: Lancamento[], precoGasolina: number): number {
+  if (!Number.isFinite(precoGasolina) || precoGasolina <= 0) return 0;
+  return Math.round((totaisSangriaCombustivel(lancamentos).gasolina / precoGasolina) * 1000) / 1000;
 }
