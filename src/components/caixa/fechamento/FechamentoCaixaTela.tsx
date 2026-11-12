@@ -8,6 +8,7 @@ import {
   type Lancamento, type TipoLancamento,
 } from "@/lib/caixa";
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
+import { dieselPendenteDeposito, separarSangria, totaisSangriaCombustivel } from "@/lib/sangrias";
 import {
   apurarFechamento, avaliarSaldoCaixa, conferirCaixa, giroMedido, leiturasVazias, validarLeiturasFinais,
   type FechamentoCaixa, type LeiturasTexto,
@@ -18,7 +19,7 @@ interface Props {
   trocoRetirado: boolean;
   onVoltar: () => void;
   onConfirmar: (fechamento: FechamentoCaixa) => boolean;
-  onAdicionarSangria: (valor: number, descricao: string) => void;
+  onAdicionarSangria: (valor: number, descricao: string, gasolina: number, diesel: number) => void;
 }
 
 const normal = "rounded-xl border border-input bg-background px-3 py-2 font-semibold outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
@@ -66,6 +67,7 @@ const nomeLancamento = (l: Lancamento) => {
 export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirmar, onAdicionarSangria }: Props) {
   const [textoLeituras, setTextoLeituras] = useState<LeiturasTexto>(leiturasVazias);
   const [sangriaTexto, setSangriaTexto] = useState("");
+  const [dieselSangriaTexto, setDieselSangriaTexto] = useState("");
   const [descricaoSangria, setDescricaoSangria] = useState("Depósito");
   const [observacao, setObservacao] = useState("");
   const [revisado, setRevisado] = useState(false);
@@ -109,6 +111,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
 
   const registrarSangria = () => {
     const valor = parseNumeroBR(sangriaTexto);
+    const diesel = parseNumeroBR(dieselSangriaTexto) ?? 0;
     if (valor === null || valor <= 0 || !Number.isFinite(valor)) {
       setErro(["Informe um valor de sangria maior que zero."]);
       return;
@@ -117,8 +120,18 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
       setErro(["Informe uma sangria dentro do limite permitido."]);
       return;
     }
-    onAdicionarSangria(Math.round(valor * 100) / 100, descricaoSangria.trim() || "Última sangria");
+    const partes = separarSangria(valor, diesel);
+    if (!partes) {
+      setErro(["A parte do diesel precisa estar entre zero e o total da sangria."]);
+      return;
+    }
+    if (partes.diesel > dieselPendenteDeposito(sessao.lancamentos) + 0.01) {
+      setErro(["O diesel informado supera as vendas em dinheiro ainda não atribuídas a sangrias."]);
+      return;
+    }
+    onAdicionarSangria(partes.total, descricaoSangria.trim() || "Última sangria", partes.gasolina, partes.diesel);
     setSangriaTexto("");
+    setDieselSangriaTexto("");
     setDescricaoSangria("Depósito");
     setRevisado(false);
     setErro([]);
@@ -241,6 +254,20 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
                   onChange={e => setSangriaTexto(e.target.value.replace(/[^\d.,]/g, ""))}
                   placeholder="0,00" className={normal + " w-full font-display num"} />
               </label>
+              <label className="min-w-[135px] flex-1">
+                <span className="mb-1 block text-xs font-bold text-muted-foreground">Parte de Diesel (R$)</span>
+                <input inputMode="decimal" value={dieselSangriaTexto}
+                  onChange={e => setDieselSangriaTexto(e.target.value.replace(/[^\d.,]/g, ""))}
+                  placeholder="0,00" className={normal + " w-full font-display num"} />
+              </label>
+              <button type="button"
+                onClick={() => {
+                  const total = parseNumeroBR(sangriaTexto) ?? 0;
+                  setDieselSangriaTexto(Math.min(total, dieselPendenteDeposito(sessao.lancamentos)).toFixed(2).replace(".", ","));
+                }}
+                className="rounded-xl border border-primary px-3 py-2 text-xs font-bold text-primary">
+                Sugerir diesel
+              </button>
               <label className="min-w-[160px] flex-1">
                 <span className="mb-1 block text-xs font-bold text-muted-foreground">Destino / observação</span>
                 <input value={descricaoSangria} maxLength={120}
@@ -253,7 +280,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               </button>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              A sangria é o dinheiro de combustível depositado. Será somada à prestação de contas do turno.
+              Gasolina = total da sangria menos a parte de Diesel. Confirme a divisão real do depósito. Diesel em dinheiro ainda sem sangria: {real(dieselPendenteDeposito(sessao.lancamentos))}. Sangrias antigas sem divisão: {real(totaisSangriaCombustivel(sessao.lancamentos).semDetalhe)}.
             </p>
           </Painel>
           <Painel titulo="Litros Vendidos (Giro de Bombas)" icon={<Fuel className="h-5 w-5" />}>
