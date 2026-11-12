@@ -186,7 +186,7 @@ export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, conta
     if (l.combustivel && (l.tipo === "despesas" || l.tipo === "notas" ||
       l.tipo === "cliente_outras_notas" ||
       l.tipo === "pix_maquininha" || l.tipo === "pix_manual" || l.tipo === "cartoes" ||
-      l.tipo === "dinheiro" || l.tipo === "cartao_frota" || l.tipo === "fit_card")) {
+      l.tipo === "dinheiro" || l.tipo === "venda_diesel_dinheiro" || l.tipo === "cartao_frota" || l.tipo === "fit_card")) {
       litrosLancados[l.combustivel] += litrosDe(l, sessao.abertura.precos);
     }
   }
