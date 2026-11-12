@@ -16,6 +16,7 @@ export type TipoLancamento =
   | "pix_manual"
   | "cartoes"
   | "dinheiro"
+  | "venda_diesel_dinheiro"
   | "produto_posto"
   | "descontos"
   | "sangria"
@@ -39,6 +40,7 @@ export const TIPOS: TipoInfo[] = [
   { id: "pix_manual", label: "Pix manual", categoria: "venda", descricao: "Enviado direto ao patrão" },
   { id: "cartoes", label: "Cartões", categoria: "venda", descricao: "Débito ou crédito" },
   { id: "dinheiro", label: "Dinheiro", categoria: "venda", descricao: "Pagamento em espécie" },
+  { id: "venda_diesel_dinheiro", label: "Venda Diesel Dinheiro", categoria: "venda", descricao: "Diesel recebido em dinheiro" },
   { id: "produto_posto", label: "Produto Posto", categoria: "venda", descricao: "Freezer e lubrificantes" },
   { id: "cartao_frota", label: "Cartão Frota", categoria: "venda", descricao: "Frotas conveniadas" },
   { id: "fit_card", label: "Fit Card", categoria: "venda", descricao: "Cartão Fit" },
@@ -61,6 +63,9 @@ export interface Lancamento {
   precoLitro?: number | undefined;
   responsavel?: string | undefined;
   destinoNota?: string | undefined;
+  /** Sangria detalhada: valores efetivamente depositados de cada combustível. */
+  sangriaGasolina?: number | undefined;
+  sangriaDiesel?: number | undefined;
   /** Identificação de item do catálogo e quantidade vendida. */
   produtoId?: string | undefined;
   produtoNome?: string | undefined;
