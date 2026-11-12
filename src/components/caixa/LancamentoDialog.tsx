@@ -36,7 +36,7 @@ export function LancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   useEffect(() => {
     if (tipo) {
       setValor("");
-      setCombustivel("gasolina");
+      setCombustivel(tipo === "venda_diesel_dinheiro" ? "diesel" : "gasolina");
       setModalidade("credito");
       setObs("");
     }
@@ -56,7 +56,8 @@ export function LancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   const Icon = TIPO_ICON[tipo];
   const isVenda = info.categoria === "venda";
   const num = Number(valor.replace(/\./g, "").replace(",", ".")) || 0;
-  const litros = isVenda ? num / precos[combustivel] : 0;
+  const combustivelSelecionado = tipo === "venda_diesel_dinheiro" ? "diesel" : combustivel;
+  const litros = isVenda ? num / precos[combustivelSelecionado] : 0;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,8 +65,10 @@ export function LancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
     onSave({
       tipo,
       valor: Math.round(num * 100) / 100,
-      combustivel: isVenda ? combustivel : undefined,
+      combustivel: isVenda ? combustivelSelecionado : undefined,
       modalidade: tipo === "cartoes" ? modalidade : isVenda ? "avista" : undefined,
+      litros: tipo === "venda_diesel_dinheiro" ? Math.round(litros * 1000) / 1000 : undefined,
+      precoLitro: tipo === "venda_diesel_dinheiro" ? precos.diesel : undefined,
       observacao: obs.trim() || undefined,
     });
   };
@@ -101,7 +104,7 @@ export function LancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
             </div>
           </label>
 
-          {isVenda && (
+          {isVenda && tipo !== "venda_diesel_dinheiro" && (
             <div>
               <span className="eyebrow text-muted-foreground">Combustível</span>
               <div className="mt-1.5 grid grid-cols-2 gap-2">
