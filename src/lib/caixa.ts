@@ -168,6 +168,11 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
     r.litrosGasolina = round(r.litrosGasolina +
       sangriasPorCombustivel.gasolina / precos.gasolina, 3);
   }
+  // Sangria representa combustível vendido em dinheiro: deve aumentar
+  // o Valor Total do Caixa. A parcela de diesel já consta como
+  // venda_diesel_dinheiro em totalVendas; por isso somente o restante
+  // (gasolina das sangrias) é acrescentado para evitar contagem dupla.
+  r.totalVendas = round(r.totalVendas + sangriasPorCombustivel.gasolina);
   r.total = round(r.totalVendas - r.totalDescontos);
   return r;
 }
