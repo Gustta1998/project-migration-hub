@@ -1,83 +1,76 @@
 import { describe, expect, it } from "vitest";
 import { calcularResumo, type Lancamento } from "./caixa";
-import { dieselPendenteDeposito, separarSangria, totaisSangriaCombustivel } from "./sangrias";
+import { litrosGasolinaSangrias, totaisSangriaCombustivel, dieselPendenteDeposito } from "./sangrias";
 import { conferirCaixa, totalPrestacaoCombustivel } from "./fechamento";
 import type { SessaoCaixa } from "./abertura";
 
 const quando = "2026-11-12T12:00:00";
-const itens: Lancamento[] = [
-  { id: "d1", tipo: "venda_diesel_dinheiro", combustivel: "diesel", valor: 76.9, litros: 10, precoLitro: 7.69, criadoEm: quando },
-  { id: "d2", tipo: "venda_diesel_dinheiro", combustivel: "diesel", valor: 38.45, litros: 5, precoLitro: 7.69, criadoEm: quando },
-  { id: "s1", tipo: "sangria", valor: 100, sangriaGasolina: 61.55, sangriaDiesel: 38.45, criadoEm: quando },
-  { id: "s2", tipo: "sangria", valor: 50, sangriaGasolina: 50, sangriaDiesel: 0, criadoEm: quando },
-  { id: "legacy", tipo: "sangria", valor: 30, criadoEm: quando },
-];
+const precos = { gasolina: 7.29, diesel: 7.69 };
+const abertura = {
+  frentista: "Teste", turno: "M" as const, data: "12/11/2026", abertoEm: quando,
+  trocoInicial: 0, precos,
+  leituras: { gasolina: { bomba1: 0, bomba2: 0 }, diesel: { bomba1: 0, bomba2: 0 } },
+};
+const lancar = (id: string, tipo: Lancamento["tipo"], valor: number, extra: Partial<Lancamento> = {}): Lancamento =>
+  ({ id, tipo, valor, criadoEm: quando, ...extra });
+const diesel100 = lancar("d", "venda_diesel_dinheiro", 76.9, { combustivel: "diesel", litros: 10 });
+const sangria150 = lancar("s", "sangria", 149.8);
 
-describe("venda diesel dinheiro e divisão de sangrias", () => {
-  it("contabiliza venda diesel na litragem vendida e nas vendas do PDV", () => {
-    const r = calcularResumo(itens, { gasolina: 7.29, diesel: 7.69 });
-    expect(r.valorDiesel).toBeCloseTo(115.35);
-    expect(r.litrosDiesel).toBe(15);
-    expect(r.totalVendas).toBeCloseTo(115.35);
+describe("sangrias divididas automaticamente por vendas de diesel dinheiro", () => {
+  it("subtrai todo diesel vendido em dinheiro do total das sangrias e atribui o restante à gasolina", () => {
+    expect(totaisSangriaCombustivel([diesel100, sangria150])).toMatchObject({
+      gasolina: 72.9, diesel: 76.9, totalSangrias: 149.8, dieselNaoDepositado: 0,
+    });
+    expect(litrosGasolinaSangrias([diesel100, sangria150], precos.gasolina)).toBe(10);
   });
 
-  it("registra os totais de gasolina e diesel depositados, sem inventar o legado", () => {
-    expect(totaisSangriaCombustivel(itens)).toEqual({
-      gasolina: 111.55, diesel: 38.45, semDetalhe: 30,
+  it("mostra diesel ainda não coberto quando há venda antes de sangria", () => {
+    expect(totaisSangriaCombustivel([diesel100])).toMatchObject({
+      gasolina: 0, diesel: 0, dieselNaoDepositado: 76.9,
+    });
+    expect(dieselPendenteDeposito([diesel100])).toBe(76.9);
+  });
+
+  it("sangrias sem qualquer diesel em dinheiro são integralmente gasolina", () => {
+    expect(totaisSangriaCombustivel([lancar("s1","sangria",72.9)])).toMatchObject({
+      gasolina: 72.9, diesel: 0,
     });
   });
 
-  it("mostra diesel em dinheiro ainda não atribuído às sangrias", () => {
-    expect(dieselPendenteDeposito(itens)).toBeCloseTo(76.9);
+  it("divide sangrias antigas automaticamente quando o diesel é lançado depois", () => {
+    const antigas = [lancar("antiga","sangria",100)];
+    expect(totaisSangriaCombustivel(antigas).gasolina).toBe(100);
+    expect(totaisSangriaCombustivel([...antigas, diesel100])).toMatchObject({
+      gasolina: 23.1, diesel: 76.9,
+    });
   });
 
-  it("não permite valor negativo ou diesel maior que o total depositado", () => {
-    expect(separarSangria(100, 110)).toBeNull();
-    expect(separarSangria(100, -1)).toBeNull();
-    expect(separarSangria(0, 0)).toBeNull();
-    expect(separarSangria(100, 40)).toEqual({ total: 100, gasolina: 60, diesel: 40 });
+  it("a soma de vendas e litros no painel acompanha a sangria sem duplicar diesel", () => {
+    const r = calcularResumo([diesel100,sangria150], precos);
+    expect(r.litrosGasolina).toBe(10);
+    expect(r.litrosDiesel).toBe(10);
+    expect(r.valorGasolina).toBe(72.9);
+    expect(r.valorDiesel).toBe(76.9);
   });
 
-  it("não duplica a venda diesel em dinheiro no total da prestação", () => {
-    const sessao: SessaoCaixa = {
-      versao: 1,
-      abertura: {
-        frentista: "Teste", turno: "M", data: "12/11/2026", abertoEm: quando,
-        trocoInicial: 0, precos: { gasolina: 7.29, diesel: 7.69 },
-        leituras: { gasolina: { bomba1: 0, bomba2: 0 }, diesel: { bomba1: 0, bomba2: 0 } },
-      },
-      notas: [], lancamentos: itens,
-    };
-    const prestacao = totalPrestacaoCombustivel(sessao);
-    expect(prestacao.total).toBe(180);
-    expect(prestacao.categorias.sangria).toBe(180);
-    const semVendas = { ...sessao, lancamentos: itens.filter(l => l.tipo !== "venda_diesel_dinheiro") };
-    expect(totalPrestacaoCombustivel(semVendas).total).toBe(prestacao.total);
+  it("o total da prestação não soma venda diesel novamente, pois está incluída na sangria", () => {
+    const sessao: SessaoCaixa = { versao: 1, abertura, notas: [], lancamentos: [diesel100, sangria150] };
+    expect(totalPrestacaoCombustivel(sessao).total).toBe(149.8);
+    expect(totalPrestacaoCombustivel({...sessao,lancamentos:[sangria150]}).total).toBe(149.8);
   });
-});
 
-describe("conferência de litros das vendas em dinheiro", () => {
-  it("atribui gasolina da sangria aos litros, diesel somente à venda, sem dobrar", () => {
-    const sessao: SessaoCaixa = {
-      versao: 1,
-      abertura: {
-        frentista: "Teste", turno: "M", data: "12/11/2026", abertoEm: quando,
-        trocoInicial: 0, precos: { gasolina: 7.29, diesel: 7.69 },
-        leituras: { gasolina: { bomba1: 0, bomba2: 0 }, diesel: { bomba1: 0, bomba2: 0 } },
-      },
-      notas: [],
-      lancamentos: [
-        { id: "d", tipo: "venda_diesel_dinheiro", valor: 76.9, combustivel: "diesel", litros: 10, criadoEm: quando },
-        { id: "s", tipo: "sangria", valor: 149.8, sangriaGasolina: 72.9, sangriaDiesel: 76.9, criadoEm: quando },
-      ],
-    };
-    const finais = {
-      gasolina: { bomba1: 10, bomba2: 0 },
-      diesel: { bomba1: 10, bomba2: 0 },
-    };
-    const resultado = conferirCaixa(sessao, finais, 0, true);
-    expect(resultado.litrosLancados.gasolina).toBe(10);
-    expect(resultado.litrosLancados.diesel).toBe(10);
-    expect(resultado.situacaoBombas).toBe("certo");
+  it("a conferência de litros reconhece sangria gasolina e venda diesel sem duplicar", () => {
+    const sessao: SessaoCaixa = { versao: 1, abertura, notas: [], lancamentos: [diesel100, sangria150] };
+    const finais = {gasolina:{bomba1:10,bomba2:0},diesel:{bomba1:10,bomba2:0}};
+    const r = conferirCaixa(sessao,finais,149.8,true);
+    expect(r.litrosLancados).toEqual({gasolina:10,diesel:10});
+    expect(r.situacaoBombas).toBe("certo");
+  });
+
+  it("não atribui diesel duas vezes quando há venda maior que o total depositado", () => {
+    const r = totaisSangriaCombustivel([diesel100,lancar("s","sangria",50)]);
+    expect(r.gasolina).toBe(0);
+    expect(r.diesel).toBe(50);
+    expect(r.dieselNaoDepositado).toBe(26.9);
   });
 });
