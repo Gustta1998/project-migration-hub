@@ -15,6 +15,7 @@ import {
   type Resumo,
 } from "@/lib/caixa";
 import { CATEGORIA_TILE_INK, TIPO_ICON } from "./icons";
+import { litrosGasolinaSangrias, totaisSangriaCombustivel } from "@/lib/sangrias";
 
 interface Props {
   resumo: Resumo;
@@ -25,6 +26,8 @@ interface Props {
 }
 
 export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemove }: Props) {
+  const combustivelSangrias = totaisSangriaCombustivel(lancamentos);
+  const litrosGasolinaSangrados = litrosGasolinaSangrias(lancamentos, precos.gasolina);
   return (
     <aside className="animate-rise flex flex-col gap-4 rounded-3xl bg-ink-panel p-4 text-ink-foreground shadow-lift sm:p-5 [animation-delay:90ms]">
       {/* Total */}
@@ -66,6 +69,11 @@ export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemov
           share={resumo.totalVendas ? resumo.valorDiesel / resumo.totalVendas : 0}
           tone="diesel"
         />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-border bg-ink-2/40 px-3 py-2 text-xs text-ink-muted">
+        <span>Sangrias de gasolina: <strong className="text-gasolina num">{formatBRL(combustivelSangrias.gasolina)} · {formatLitros(litrosGasolinaSangrados)}</strong></span>
+        <span>Sangrias de diesel: <strong className="text-diesel num">{formatBRL(combustivelSangrias.diesel)}</strong></span>
       </div>
 
       <div className="grid min-h-0 gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
