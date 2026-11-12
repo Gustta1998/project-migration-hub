@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calcularResumo, type Lancamento } from "./caixa";
 import { dieselPendenteDeposito, separarSangria, totaisSangriaCombustivel } from "./sangrias";
-import { totalPrestacaoCombustivel } from "./fechamento";
+import { conferirCaixa, totalPrestacaoCombustivel } from "./fechamento";
 import type { SessaoCaixa } from "./abertura";
 
 const quando = "2026-11-12T12:00:00";
@@ -53,5 +53,31 @@ describe("venda diesel dinheiro e divisão de sangrias", () => {
     expect(prestacao.categorias.sangria).toBe(180);
     const semVendas = { ...sessao, lancamentos: itens.filter(l => l.tipo !== "venda_diesel_dinheiro") };
     expect(totalPrestacaoCombustivel(semVendas).total).toBe(prestacao.total);
+  });
+});
+
+describe("conferência de litros das vendas em dinheiro", () => {
+  it("atribui gasolina da sangria aos litros, diesel somente à venda, sem dobrar", () => {
+    const sessao: SessaoCaixa = {
+      versao: 1,
+      abertura: {
+        frentista: "Teste", turno: "M", data: "12/11/2026", abertoEm: quando,
+        trocoInicial: 0, precos: { gasolina: 7.29, diesel: 7.69 },
+        leituras: { gasolina: { bomba1: 0, bomba2: 0 }, diesel: { bomba1: 0, bomba2: 0 } },
+      },
+      notas: [],
+      lancamentos: [
+        { id: "d", tipo: "venda_diesel_dinheiro", valor: 76.9, combustivel: "diesel", litros: 10, criadoEm: quando },
+        { id: "s", tipo: "sangria", valor: 149.8, sangriaGasolina: 72.9, sangriaDiesel: 76.9, criadoEm: quando },
+      ],
+    };
+    const finais = {
+      gasolina: { bomba1: 10, bomba2: 0 },
+      diesel: { bomba1: 10, bomba2: 0 },
+    };
+    const resultado = conferirCaixa(sessao, finais, 0, true);
+    expect(resultado.litrosLancados.gasolina).toBe(10);
+    expect(resultado.litrosLancados.diesel).toBe(10);
+    expect(resultado.situacaoBombas).toBe("certo");
   });
 });
