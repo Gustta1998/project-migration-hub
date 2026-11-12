@@ -26,14 +26,16 @@ describe("calcularResumo", () => {
     expect(r.litrosGasolina).toBe(66.255);
   });
 
-  it("descontos abatem o total, sangria e despesas não", () => {
+  it("descontos abatem o total e sangrias de gasolina somam nas vendas", () => {
     const extra: Lancamento[] = [
       ...LANCAMENTOS_INICIAIS,
       { id: "d", tipo: "descontos", valor: 10, criadoEm: "2026-11-05T01:00:00" },
       { id: "s", tipo: "sangria", valor: 100, criadoEm: "2026-11-05T01:00:00" },
     ];
     const r = calcularResumo(extra, TURNO.precos);
-    expect(r.total).toBe(473);
+    expect(r.total).toBe(573);
+    expect(r.totalVendas).toBe(583);
+    expect(r.valorGasolina).toBe(583);
     expect(r.totalSaidas).toBe(100);
   });
 });
@@ -187,5 +189,37 @@ describe("despesas gerais — Outros", () => {
     const r = calcularResumo([l], TURNO.precos);
     expect(r.totalSaidas).toBe(120);
     expect(r.porTipo.despesas.valor).toBe(120);
+  });
+});
+
+describe("valor total do caixa com sangria e diesel dinheiro", () => {
+  const iso = "2026-11-12T17:21:00";
+  it("soma sangria de R$ 200 ao total sem modificar descontos", () => {
+    const base: Lancamento[] = [
+      { id: "v", tipo: "pix_manual", valor: 1538, combustivel: "gasolina", criadoEm: iso },
+      { id: "des", tipo: "descontos", valor: 14, criadoEm: iso },
+    ];
+    expect(calcularResumo(base, TURNO.precos).total).toBe(1524);
+    const resultado = calcularResumo([
+      ...base,
+      { id: "s", tipo: "sangria", valor: 200, criadoEm: iso },
+    ], TURNO.precos);
+    expect(resultado.total).toBe(1724);
+    expect(resultado.totalVendas).toBe(1738);
+    expect(resultado.valorGasolina).toBe(1738);
+  });
+
+  it("não soma diesel dinheiro duas vezes quando ele aparece nas sangrias", () => {
+    const lancamentos: Lancamento[] = [
+      { id: "d", tipo: "venda_diesel_dinheiro", combustivel: "diesel", valor: 76.9, criadoEm: iso },
+      { id: "s", tipo: "sangria", valor: 149.8, criadoEm: iso },
+    ];
+    const r = calcularResumo(lancamentos, { gasolina: 7.29, diesel: 7.69 });
+    expect(r.totalVendas).toBeCloseTo(149.8);
+    expect(r.total).toBeCloseTo(149.8);
+    expect(r.valorGasolina).toBeCloseTo(72.9);
+    expect(r.valorDiesel).toBeCloseTo(76.9);
+    expect(r.litrosGasolina).toBeCloseTo(10, 3);
+    expect(r.litrosDiesel).toBeCloseTo(10, 3);
   });
 });
