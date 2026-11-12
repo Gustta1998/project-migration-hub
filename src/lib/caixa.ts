@@ -1,3 +1,5 @@
+import { totaisSangriaCombustivel } from "./sangrias";
+
 export type Combustivel = "gasolina" | "diesel";
 
 export const FUNCIONARIOS = ["LUCIVANDO", "ROAN", "GUSTAVO", "NAYZA", "ROANY", "MOABE GERENTE"] as const;
@@ -157,6 +159,15 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
   r.litrosDiesel = round(lancamentos
     .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "diesel")
     .reduce((acc, l) => acc + litrosExatos(l), 0), 3);
+  // Sangria é depósito de combustível vendido em dinheiro.
+  // A parte de gasolina compõe a litragem do painel; diesel já foi
+  // contabilizado em Venda Diesel Dinheiro (não deve ser duplicado).
+  const sangriasPorCombustivel = totaisSangriaCombustivel(lancamentos);
+  r.valorGasolina = round(r.valorGasolina + sangriasPorCombustivel.gasolina);
+  if (precos.gasolina > 0) {
+    r.litrosGasolina = round(r.litrosGasolina +
+      sangriasPorCombustivel.gasolina / precos.gasolina, 3);
+  }
   r.total = round(r.totalVendas - r.totalDescontos);
   return r;
 }
