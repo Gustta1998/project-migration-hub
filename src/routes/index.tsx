@@ -253,6 +253,7 @@ function Pdv({
       <LancamentoDialog
         tipo={tipoAberto}
         precos={precos}
+        lancamentos={lancamentos}
         onClose={() => setTipoAberto(null)}
         onSave={(l) => {
           setLancamentos((ls) => [
