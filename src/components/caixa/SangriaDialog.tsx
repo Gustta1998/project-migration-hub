@@ -63,7 +63,7 @@ export function SangriaDialog({ lancamentos, onClose, onSave }: Props) {
             <div className="mt-2 flex items-center justify-between gap-2">
               <label className="flex-1">
                 <span className="eyebrow text-muted-foreground">Parte de diesel no depósito (R$)</span>
-                <input required inputMode="decimal" value={diesel} placeholder="0,00"
+                <input inputMode="decimal" value={diesel} placeholder="0,00"
                   onChange={e => { setDiesel(e.target.value.replace(/[^\d.,]/g, "")); setErro(""); }}
                   className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 font-bold num outline-none focus:border-primary" />
               </label>
