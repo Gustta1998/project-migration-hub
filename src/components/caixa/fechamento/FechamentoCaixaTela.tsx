@@ -58,6 +58,8 @@ const nomeLancamento = (l: Lancamento) => {
     }
     return partes.filter(Boolean).join(" · ");
   }
+  if (l.tipo === "sangria" && typeof l.sangriaDiesel === "number" && typeof l.sangriaGasolina === "number")
+    return [l.observacao, "Gasolina " + real(l.sangriaGasolina), "Diesel " + real(l.sangriaDiesel)].filter(Boolean).join(" · ");
   if (l.tipo === "cartoes") return l.modalidade === "debito" ? "Débito" : "Crédito";
   if (l.tipo === "notas" || l.tipo === "cliente_outras_notas")
     return [l.responsavel, l.destinoNota].filter(Boolean).join(" · ") || "Nota";
@@ -244,6 +246,23 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
             </table>
           </div>
         </section>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+            <p className="eyebrow text-muted-foreground">Sangrias de gasolina</p>
+            <p className="mt-1 font-display text-2xl font-bold num">{real(totaisSangriaCombustivel(sessao.lancamentos).gasolina)}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+            <p className="eyebrow text-muted-foreground">Sangrias de diesel</p>
+            <p className="mt-1 font-display text-2xl font-bold num">{real(totaisSangriaCombustivel(sessao.lancamentos).diesel)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Diesel em dinheiro vendido: {real(sessao.lancamentos.filter(l => l.tipo === "venda_diesel_dinheiro").reduce((s,l) => s + l.valor, 0))}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+            <p className="eyebrow text-muted-foreground">Sangrias antigas sem divisão</p>
+            <p className="mt-1 font-display text-2xl font-bold num">{real(totaisSangriaCombustivel(sessao.lancamentos).semDetalhe)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Não é possível atribuir automaticamente a gasolina ou diesel.</p>
+          </div>
+        </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Painel titulo="Adicionar última sangria" icon={<MinusCircle className="h-5 w-5" />}>
