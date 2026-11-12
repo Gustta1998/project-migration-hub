@@ -20,6 +20,7 @@ export const TIPO_ICON: Record<TipoLancamento, LucideIcon> = {
   pix_manual: Smartphone,
   cartoes: CreditCard,
   dinheiro: Banknote,
+  venda_diesel_dinheiro: Banknote,
   produto_posto: ShoppingBasket,
   cartao_frota: Truck,
   fit_card: WalletCards,
