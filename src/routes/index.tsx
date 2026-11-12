@@ -199,12 +199,14 @@ function Pdv({
       trocoRetirado={trocoRetirado}
       onVoltar={() => { setEmFechamento(false); setTrocoRetirado(null); }}
       onConfirmar={onFechar}
-      onAdicionarSangria={(valor, descricao) => setLancamentos((ls) => [
+      onAdicionarSangria={(valor, descricao, gasolina, diesel) => setLancamentos((ls) => [
         {
           id: crypto.randomUUID(),
           criadoEm: new Date().toISOString(),
           tipo: "sangria",
           valor,
+          sangriaGasolina: gasolina,
+          sangriaDiesel: diesel,
           observacao: descricao,
         },
         ...ls,
