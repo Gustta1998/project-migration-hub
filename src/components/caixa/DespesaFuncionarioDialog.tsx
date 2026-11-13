@@ -73,14 +73,13 @@ export function DespesaFuncionarioDialog({ precos, frentista, onClose, onSave }:
     }
     if (!Number.isFinite(valor) || valor <= 0) return setErro("Informe um valor válido maior que zero.");
     const descricaoTipo = TIPOS_DESPESA_FUNCIONARIO.find((t) => t.id === categoria)?.label ?? categoria;
-    const descricao = [funcionario, afericao ? "Aferição devolvida ao tanque" : "", descricaoTipo, combustivel && litros !== null ? formatLitros(litros) : "", observacao.trim()]
+    const descricao = [funcionario, descricaoTipo, combustivel && litros !== null ? formatLitros(litros) : "", observacao.trim()]
       .filter(Boolean).join(" · ");
     onSave({
       tipo: "despesas",
       valor,
       funcionario,
       responsavel: frentista,
-      afericaoDevolvida: !!combustivel && afericao,
       tipoDespesaFuncionario: categoria,
       combustivel,
       litros: combustivel ? litros! : undefined,
@@ -185,7 +184,7 @@ export function DespesaFuncionarioDialog({ precos, frentista, onClose, onSave }:
 
           {(categoria || funcionario === "OUTROS") && (
             <>
-              {combustivel && (
+              {funcionario === "OUTROS" && combustivel && (
                 <div>
                   <span className="eyebrow text-muted-foreground">Tipo de movimentação</span>
                   <div className="mt-1.5 grid grid-cols-2 gap-2">
