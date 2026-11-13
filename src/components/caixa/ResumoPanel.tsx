@@ -173,7 +173,7 @@ function Historico({
         {lista.map((l) => {
           const info = tipoInfo(l.tipo);
           const Icon = TIPO_ICON[l.tipo];
-          const negativo = info.categoria !== "venda" && l.tipo !== "sangria";
+          const negativo = info.categoria !== "venda" && l.tipo !== "sangria" && l.tipo !== "descarregamento";
           return (
             <li
               key={l.id}
@@ -187,7 +187,7 @@ function Historico({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{info.label}</p>
                 <p className="truncate text-[11px] text-ink-muted">
-                  {l.combustivel && (
+                  {l.combustivel && l.tipo !== "descarregamento" && (
                     <>
                       <span
                         className={l.combustivel === "diesel" ? "text-diesel" : "text-gasolina"}
@@ -209,14 +209,14 @@ function Historico({
                   {l.tipo === "notas" && (
                     <span className="font-bold text-warning-foreground"> · Faturado</span>
                   )}
+                  {l.tipo === "descarregamento" && <> · {l.responsavel} · Antes: {formatLitros(l.descargaAntesLitros ?? 0)} · Depois: {formatLitros(l.descargaDepoisLitros ?? 0)}</>}
                   {l.observacao && <> · {l.observacao}</>}
                 </p>
               </div>
               <p
-                className={`shrink-0 font-display text-base font-bold num ${l.tipo === "sangria" ? "text-gasolina" : negativo ? "text-danger" : ""}`}
+                className={`shrink-0 font-display text-base font-bold num ${l.tipo === "descarregamento" ? "text-primary-glow" : l.tipo === "sangria" ? "text-gasolina" : negativo ? "text-danger" : ""}`}
               >
-                {negativo ? "−" : ""}
-                {formatBRL(l.valor)}
+                {l.tipo === "descarregamento" ? "+" + formatLitros(l.litros ?? 0) : (negativo ? "−" : "") + formatBRL(l.valor)}
               </p>
               <button
                 type="button"
