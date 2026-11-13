@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle2, LockKeyholeOpen, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/caixa/AppHeader";
 import { modoTesteAtivo } from "@/lib/modo-teste";
+import { registrarLancamentoComDesconto, removerLancamentoVinculado } from "@/lib/descontos-notas";
 import { TurnoCard } from "@/components/caixa/TurnoCard";
 import { ActionGrid } from "@/components/caixa/ActionGrid";
 import { NotasAutorizadas } from "@/components/caixa/NotasAutorizadas";
@@ -245,7 +246,7 @@ function Pdv({
             lancamentos={lancamentos}
             precos={precos}
             trocoInicial={abertura.trocoInicial}
-            onRemove={(id) => setLancamentos((ls) => ls.filter((l) => l.id !== id))}
+            onRemove={(id) => setLancamentos((ls) => removerLancamentoVinculado(ls, id))}
           />
         </div>
       </main>
@@ -257,7 +258,7 @@ function Pdv({
         onClose={() => setTipoAberto(null)}
         onSave={(l) => {
           setLancamentos((ls) => [
-            { ...l, id: crypto.randomUUID(), criadoEm: new Date().toISOString() },
+            ...registrarLancamentoComDesconto(l, crypto.randomUUID(), new Date().toISOString()),
             ...ls,
           ]);
           setTipoAberto(null);
