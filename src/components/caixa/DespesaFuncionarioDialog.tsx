@@ -11,6 +11,7 @@ import {
 
 interface Props {
   precos: Precos;
+  frentista: string;
   onClose: () => void;
   onSave: (l: Omit<Lancamento, "id" | "criadoEm">) => void;
 }
@@ -18,12 +19,13 @@ interface Props {
 const campo = "mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
 const icones = { vale: HandCoins, gasolina: Droplet, diesel: Droplet, dinheiro: Banknote };
 
-export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
+export function DespesaFuncionarioDialog({ precos, frentista, onClose, onSave }: Props) {
   const [funcionario, setFuncionario] = useState<Funcionario | "OUTROS" | "">("");
   const [categoria, setCategoria] = useState<TipoDespesaFuncionario | "">("");
   const [tipoOutros, setTipoOutros] = useState<"geral" | "gasolina" | "diesel">("geral");
   const [valorTexto, setValorTexto] = useState("");
   const [litrosTexto, setLitrosTexto] = useState("");
+  const [afericao, setAfericao] = useState(false);
   const [observacao, setObservacao] = useState("");
   const [erro, setErro] = useState("");
 
@@ -45,7 +47,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
     e.preventDefault();
     if (!funcionario) return setErro("Selecione um funcionário ou Outros.");
     if (funcionario === "OUTROS") {
-      if (!observacao.trim()) return setErro("Descreva a despesa (ex.: cozinha, alimentação ou material).");
+      if (!afericao && !observacao.trim()) return setErro("Descreva a despesa (ex.: cozinha, alimentação ou material).");
       if (combustivel && (litros === null || !Number.isFinite(litros) || litros <= 0)) {
         return setErro("Informe uma quantidade de litros maior que zero.");
       }
@@ -54,11 +56,13 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
         tipo: "despesas",
         valor,
         tipoDespesaGeral: "outros",
+        afericaoDevolvida: !!combustivel && afericao,
+        responsavel: frentista,
         descricaoDespesa: observacao.trim(),
         combustivel,
         litros: combustivel ? litros! : undefined,
         precoLitro,
-        observacao: ["Outros", combustivel ? (combustivel === "gasolina" ? "Gasolina" : "Diesel") : "Despesa geral", 
+        observacao: ["Outros", afericao ? "Aferição devolvida ao tanque" : "", combustivel ? (combustivel === "gasolina" ? "Gasolina" : "Diesel") : "Despesa geral", 
           combustivel && litros !== null ? formatLitros(litros) : "", observacao.trim()].filter(Boolean).join(" · "),
       });
       return;
@@ -69,12 +73,14 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
     }
     if (!Number.isFinite(valor) || valor <= 0) return setErro("Informe um valor válido maior que zero.");
     const descricaoTipo = TIPOS_DESPESA_FUNCIONARIO.find((t) => t.id === categoria)?.label ?? categoria;
-    const descricao = [funcionario, descricaoTipo, combustivel && litros !== null ? formatLitros(litros) : "", observacao.trim()]
+    const descricao = [funcionario, afericao ? "Aferição devolvida ao tanque" : "", descricaoTipo, combustivel && litros !== null ? formatLitros(litros) : "", observacao.trim()]
       .filter(Boolean).join(" · ");
     onSave({
       tipo: "despesas",
       valor,
       funcionario,
+      responsavel: frentista,
+      afericaoDevolvida: !!combustivel && afericao,
       tipoDespesaFuncionario: categoria,
       combustivel,
       litros: combustivel ? litros! : undefined,
@@ -110,6 +116,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
                   setTipoOutros("geral");
                   setValorTexto("");
                   setLitrosTexto("");
+                  setAfericao(false);
                   setErro("");
                 }}
                 className={campo + " mt-0 pl-9"}
@@ -130,7 +137,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
                     key={t}
                     type="button"
                     aria-pressed={tipoOutros === t}
-                    onClick={() => { setTipoOutros(t); setValorTexto(""); setLitrosTexto(""); setErro(""); }}
+                    onClick={() => { setTipoOutros(t); setValorTexto(""); setLitrosTexto(""); setAfericao(false); setErro(""); }}
                     className={
                       "rounded-xl border-2 px-2 py-3 text-sm font-bold transition-colors " +
                       (tipoOutros === t
@@ -159,7 +166,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
                       key={id}
                       type="button"
                       aria-pressed={ativo}
-                      onClick={() => { setCategoria(id); setValorTexto(""); setLitrosTexto(""); setErro(""); }}
+                      onClick={() => { setCategoria(id); setValorTexto(""); setLitrosTexto(""); setAfericao(false); setErro(""); }}
                       className={
                         "flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-bold transition-colors " +
                         (ativo
@@ -178,6 +185,34 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
 
           {(categoria || funcionario === "OUTROS") && (
             <>
+              {combustivel && (
+                <div>
+                  <span className="eyebrow text-muted-foreground">Tipo de movimentação</span>
+                  <div className="mt-1.5 grid grid-cols-2 gap-2">
+                    {([
+                      { id: "despesa", label: "Despesa de combustível" },
+                      { id: "afericao", label: "Aferição (devolvida)" },
+                    ] as const).map(opcao => (
+                      <button
+                        key={opcao.id}
+                        type="button"
+                        aria-pressed={afericao === (opcao.id === "afericao")}
+                        onClick={() => { setAfericao(opcao.id === "afericao"); setErro(""); }}
+                        className={"rounded-xl border-2 px-2 py-3 text-sm font-bold transition-colors " +
+                          (afericao === (opcao.id === "afericao")
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40")}
+                      >
+                        {opcao.label}
+                      </button>
+                    ))}
+                  </div>
+                  {afericao && <p className="mt-2 rounded-xl bg-primary-soft px-3 py-2 text-xs text-primary">
+                    Aferição: combustível devolvido ao tanque. Será registrada para conferir o giro da bomba
+                    e para o futuro controle de estoque do gerente, sem gerar venda nem despesa consumida.
+                  </p>}
+                </div>
+              )}
               {combustivel ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
@@ -219,7 +254,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
                 <span className="eyebrow text-muted-foreground">{funcionario === "OUTROS" ? "Descrição da despesa (obrigatória)" : "Observação (opcional)"}</span>
                 <input
                   value={observacao}
-                  required={funcionario === "OUTROS"}
+                  required={funcionario === "OUTROS" && !afericao}
                   maxLength={160}
                   onChange={(e) => setObservacao(e.target.value)}
                   placeholder={funcionario === "OUTROS" ? "Ex.: compras para cozinha, gás, materiais…" : "Informação adicional"}
@@ -229,7 +264,7 @@ export function DespesaFuncionarioDialog({ precos, onClose, onSave }: Props) {
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div>
-                  <span className="eyebrow text-muted-foreground">Total da despesa</span>
+                  <span className="eyebrow text-muted-foreground">{afericao ? "Valor equivalente na bomba (não cobrado)" : "Total da despesa"}</span>
                   <p className="font-display text-2xl font-bold num">{formatBRL(valor)}</p>
                 </div>
                 <button
