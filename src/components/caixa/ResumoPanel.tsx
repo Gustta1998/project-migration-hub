@@ -180,7 +180,7 @@ function Historico({
               className="group flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-ink-foreground/[0.06]"
             >
               <span
-                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${CATEGORIA_TILE_INK[info.categoria]}`}
+                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${l.tipo === "sangria" ? "bg-gasolina/15 text-gasolina" : CATEGORIA_TILE_INK[info.categoria]}`}
               >
                 <Icon className="h-4 w-4" />
               </span>
