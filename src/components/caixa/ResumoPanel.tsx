@@ -16,6 +16,7 @@ import {
 } from "@/lib/caixa";
 import { CATEGORIA_TILE_INK, TIPO_ICON } from "./icons";
 import { litrosGasolinaSangrias, totaisSangriaCombustivel } from "@/lib/sangrias";
+import { apurarAfericoes } from "@/lib/afericoes";
 
 interface Props {
   resumo: Resumo;
@@ -32,6 +33,7 @@ export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemov
     .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota")
     .reduce((s, l) => s + l.valor, 0);
   const descontosManuais = Math.max(0, resumo.totalDescontos - descontosComerciais);
+  const afericoes = apurarAfericoes(lancamentos, precos);
   return (
     <aside className="animate-rise flex flex-col gap-4 rounded-3xl bg-ink-panel p-4 text-ink-foreground shadow-lift sm:p-5 [animation-delay:90ms]">
       {/* Total */}
@@ -83,6 +85,13 @@ export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemov
         <span>Sangrias de diesel: <strong className="text-diesel num">{formatBRL(combustivelSangrias.diesel)}</strong></span>
       </div>
 
+      {(afericoes.gasolina.quantidade > 0 || afericoes.diesel.quantidade > 0) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-border bg-ink-2/40 px-3 py-2 text-xs text-ink-muted">
+          <span>Aferições devolvidas · Gasolina: <strong className="text-gasolina num">{formatLitros(afericoes.gasolina.litros)}</strong></span>
+          <span>Diesel: <strong className="text-diesel num">{formatLitros(afericoes.diesel.litros)}</strong></span>
+          <span>Sem saída definitiva do tanque</span>
+        </div>
+      )}
       <div className="grid min-h-0 gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <Historico lancamentos={lancamentos} precos={precos} onRemove={onRemove} />
         <PorPagamento resumo={resumo} />
@@ -173,19 +182,19 @@ function Historico({
         {lista.map((l) => {
           const info = tipoInfo(l.tipo);
           const Icon = TIPO_ICON[l.tipo];
-          const negativo = info.categoria !== "venda" && l.tipo !== "sangria" && l.tipo !== "descarregamento";
+          const negativo = info.categoria !== "venda" && l.tipo !== "sangria" && l.tipo !== "descarregamento" && !l.afericaoDevolvida;
           return (
             <li
               key={l.id}
               className="group flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-ink-foreground/[0.06]"
             >
               <span
-                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${l.tipo === "sangria" ? "bg-gasolina/15 text-gasolina" : CATEGORIA_TILE_INK[info.categoria]}`}
+                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${l.afericaoDevolvida ? "bg-primary-glow/20 text-primary-glow" : l.tipo === "sangria" ? "bg-gasolina/15 text-gasolina" : CATEGORIA_TILE_INK[info.categoria]}`}
               >
                 <Icon className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold">{info.label}</p>
+                <p className="truncate text-sm font-bold">{l.afericaoDevolvida ? "Aferição devolvida" : info.label}</p>
                 <p className="truncate text-[11px] text-ink-muted">
                   {l.combustivel && l.tipo !== "descarregamento" && (
                     <>
@@ -210,13 +219,14 @@ function Historico({
                     <span className="font-bold text-warning-foreground"> · Faturado</span>
                   )}
                   {l.tipo === "descarregamento" && <> · {l.responsavel} · Antes: {formatLitros(l.descargaAntesLitros ?? 0)} · Depois: {formatLitros(l.descargaDepoisLitros ?? 0)}</>}
+                  {l.afericaoDevolvida && <> · Responsável: {l.responsavel || l.funcionario || "Não informado"} · Devolvida ao tanque</>}
                   {l.observacao && <> · {l.observacao}</>}
                 </p>
               </div>
               <p
-                className={`shrink-0 font-display text-base font-bold num ${l.tipo === "descarregamento" ? "text-primary-glow" : l.tipo === "sangria" ? "text-gasolina" : negativo ? "text-danger" : ""}`}
+                className={`shrink-0 font-display text-base font-bold num ${l.afericaoDevolvida || l.tipo === "descarregamento" ? "text-primary-glow" : l.tipo === "sangria" ? "text-gasolina" : negativo ? "text-danger" : ""}`}
               >
-                {l.tipo === "descarregamento" ? "+" + formatLitros(l.litros ?? 0) : (negativo ? "−" : "") + formatBRL(l.valor)}
+                {l.afericaoDevolvida ? formatLitros(litrosDe(l, precos)) : l.tipo === "descarregamento" ? "+" + formatLitros(l.litros ?? 0) : (negativo ? "−" : "") + formatBRL(l.valor)}
               </p>
               <button
                 type="button"
