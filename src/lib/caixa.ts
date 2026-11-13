@@ -48,7 +48,7 @@ export const TIPOS: TipoInfo[] = [
   { id: "fit_card", label: "Fit Card", categoria: "venda", descricao: "Cartão Fit" },
   { id: "notas", label: "Notas", categoria: "venda", descricao: "Notas autorizadas" },
   { id: "cliente_outras_notas", label: "Cliente outras notas", categoria: "venda", descricao: "Notas de terceiros" },
-  { id: "descontos", label: "Descontos", categoria: "desconto", descricao: "Abate do total" },
+  { id: "descontos", label: "Descontos", categoria: "desconto", descricao: "Complemento da venda para conferir as bombas" },
   { id: "sangria", label: "Sangria", categoria: "saida", descricao: "Retirada do caixa" },
   { id: "despesas", label: "Despesas", categoria: "saida", descricao: "Gastos do turno" },
 ];
