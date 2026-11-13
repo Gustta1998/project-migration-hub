@@ -165,6 +165,12 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
       }
     } else if (info.categoria === "saida") {
       r.totalSaidas += l.valor;
+      // Combustível retirado como despesa já passou pela bomba.
+      // Justifica valor e litros do turno, sem representar dinheiro recebido.
+      if (l.tipo === "despesas" && l.combustivel) {
+        if (l.combustivel === "gasolina") r.valorGasolina += l.valor;
+        else r.valorDiesel += l.valor;
+      }
     }
     // Estoque não é uma operação financeira e não deve alterar o caixa.
   }
@@ -181,6 +187,14 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
   r.litrosDiesel = round(lancamentos
     .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "diesel")
     .reduce((acc, l) => acc + litrosExatos(l), 0), 3);
+  // Despesas de combustível são abastecimentos: somar os litros medidos
+  // tanto para funcionários quanto para "Outros", sem duplicar vendas.
+  for (const l of lancamentos) {
+    if (l.tipo !== "despesas" || !l.combustivel) continue;
+    const litros = litrosExatos(l);
+    if (l.combustivel === "gasolina") r.litrosGasolina += litros;
+    else r.litrosDiesel += litros;
+  }
   // Litros equivalentes dos descontos manuais: nota com preço especial
   // não entra aqui, pois seus litros já foram registrados pela nota.
   for (const l of lancamentos) {
@@ -213,6 +227,14 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
     .filter(l => l.tipo === "descontos" && l.origemDesconto !== "nota")
     .reduce((s, l) => s + l.valor, 0);
   r.totalVendas = round(r.totalVendas + descontosManuais);
+  // Os abastecimentos lançados como despesa são combustível consumido:
+  // entram na prestação do turno ao preço da bomba (não no caixa físico).
+  const valorCombustivelDespesas = lancamentos
+    .filter(l => l.tipo === "despesas" && !!l.combustivel)
+    .reduce((s, l) => s + l.valor, 0);
+  r.totalVendas = round(r.totalVendas + valorCombustivelDespesas);
+  r.valorGasolina = round(r.valorGasolina);
+  r.valorDiesel = round(r.valorDiesel);
   r.total = round(r.totalVendas);
   return r;
 }
