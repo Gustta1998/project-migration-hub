@@ -51,7 +51,7 @@ export function LancamentoDialog({ tipo, precos, lancamentos, frentista, onClose
     return <NotaLancamentoDialog tipo={tipo} precos={precos} onClose={onClose} onSave={onSave} />;
   }
   if (tipo === "despesas") {
-    return <DespesaFuncionarioDialog precos={precos} onClose={onClose} onSave={onSave} />;
+    return <DespesaFuncionarioDialog precos={precos} frentista={frentista} onClose={onClose} onSave={onSave} />;
   }
   if (tipo === "descarregamento") {
     return <DescarregamentoDialog responsavel={frentista} onClose={onClose} onSave={onSave} />;
