@@ -32,14 +32,14 @@ interface Props {
 export function LancamentoDialog({ tipo, precos, lancamentos, onClose, onSave }: Props) {
   const [valor, setValor] = useState("");
   const [combustivel, setCombustivel] = useState<Combustivel>("gasolina");
-  const [modalidade, setModalidade] = useState<"debito" | "credito">("credito");
+  const [modalidade, setModalidade] = useState<"debito" | "credito">("debito");
   const [obs, setObs] = useState("");
 
   useEffect(() => {
     if (tipo) {
       setValor("");
       setCombustivel(tipo === "venda_diesel_dinheiro" ? "diesel" : "gasolina");
-      setModalidade("credito");
+      setModalidade("debito");
       setObs("");
     }
   }, [tipo]);
