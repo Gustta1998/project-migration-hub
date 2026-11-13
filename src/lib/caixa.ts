@@ -65,6 +65,13 @@ export interface Lancamento {
   precoLitro?: number | undefined;
   responsavel?: string | undefined;
   destinoNota?: string | undefined;
+  /** Preço real a cobrar; precoLitro continua representando o valor da bomba. */
+  precoEspecial?: number | undefined;
+  valorBomba?: number | undefined;
+  descontoNota?: number | undefined;
+  /** Um desconto automático pertence à nota e não deve ser cobrado novamente. */
+  notaVinculadaId?: string | undefined;
+  origemDesconto?: "nota" | undefined;
   /** Sangria detalhada: valores efetivamente depositados de cada combustível. */
   sangriaGasolina?: number | undefined;
   sangriaDiesel?: number | undefined;
@@ -173,7 +180,12 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
   // venda_diesel_dinheiro em totalVendas; por isso somente o restante
   // (gasolina das sangrias) é acrescentado para evitar contagem dupla.
   r.totalVendas = round(r.totalVendas + sangriasPorCombustivel.gasolina);
-  r.total = round(r.totalVendas - r.totalDescontos);
+  // Desconto gerado junto de nota: a venda já está no valor líquido
+  // cobrado do cliente. Não descontar novamente do total do caixa.
+  const descontosManuais = lancamentos
+    .filter(l => l.tipo === "descontos" && l.origemDesconto !== "nota")
+    .reduce((s, l) => s + l.valor, 0);
+  r.total = round(r.totalVendas - descontosManuais);
   return r;
 }
 
