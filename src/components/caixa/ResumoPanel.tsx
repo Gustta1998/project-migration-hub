@@ -28,6 +28,10 @@ interface Props {
 export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemove }: Props) {
   const combustivelSangrias = totaisSangriaCombustivel(lancamentos);
   const litrosGasolinaSangrados = litrosGasolinaSangrias(lancamentos, precos.gasolina);
+  const descontosComerciais = lancamentos
+    .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota")
+    .reduce((s, l) => s + l.valor, 0);
+  const descontosManuais = Math.max(0, resumo.totalDescontos - descontosComerciais);
   return (
     <aside className="animate-rise flex flex-col gap-4 rounded-3xl bg-ink-panel p-4 text-ink-foreground shadow-lift sm:p-5 [animation-delay:90ms]">
       {/* Total */}
@@ -42,7 +46,10 @@ export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemov
             Vendas <b className="num text-ink-foreground">{formatBRL(resumo.totalVendas)}</b>
           </span>
           <span>
-            Descontos <b className="num text-ink-foreground">−{formatBRL(resumo.totalDescontos)}</b>
+            Descontos manuais <b className="num text-ink-foreground">−{formatBRL(descontosManuais)}</b>
+          </span>
+          <span>
+            Descontos em notas <b className="num text-ink-foreground">{formatBRL(descontosComerciais)}</b>
           </span>
           <span>
             Saídas <b className="num text-ink-foreground">{formatBRL(resumo.totalSaidas)}</b>
