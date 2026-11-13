@@ -76,10 +76,20 @@ export function totalPrestacaoCombustivel(sessao: SessaoCaixa): {
       .filter(l => l.tipo === tipo)
       .reduce((s, l) => s + l.valor, 0));
   }
+  const descontosDeNotas = arred(sessao.lancamentos
+    .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota" &&
+      !!l.notaVinculadaId && sessao.lancamentos.some(n => n.id === l.notaVinculadaId))
+    .reduce((s, l) => s + l.valor, 0));
+  // A nota guarda o valor que o cliente deve. Seu desconto comercial recompõe
+  // a venda ao preço da bomba na CONFERÊNCIA, não nas contas a receber.
+  // Descontos manuais mantêm o abatimento definido anteriormente.
+  const totalBase = Object.entries(categorias).reduce(
+    (s, [tipo, valor]) => s + (tipo === "descontos" ? -valor : valor), 0,
+  );
   return {
-    // Sangria e despesas compõem a prestação do combustível; desconto reduz o valor final.
-    total: arred(Object.entries(categorias).reduce((s, [tipo, valor]) => s + (tipo === "descontos" ? -valor : valor), 0)),
+    total: arred(totalBase + 2 * descontosDeNotas),
     categorias,
+    descontosDeNotas,
   };
 }
 
