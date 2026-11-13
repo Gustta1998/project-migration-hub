@@ -20,16 +20,18 @@ import { NotaLancamentoDialog } from "./NotaLancamentoDialog";
 import { DespesaFuncionarioDialog } from "./DespesaFuncionarioDialog";
 import { ProdutoPostoDialog } from "./ProdutoPostoDialog";
 import { SangriaDialog } from "./SangriaDialog";
+import { DescarregamentoDialog } from "./DescarregamentoDialog";
 
 interface Props {
   tipo: TipoLancamento | null;
   precos: Precos;
   lancamentos: Lancamento[];
+  frentista: string;
   onClose: () => void;
   onSave: (l: Omit<Lancamento, "id" | "criadoEm">) => void;
 }
 
-export function LancamentoDialog({ tipo, precos, lancamentos, onClose, onSave }: Props) {
+export function LancamentoDialog({ tipo, precos, lancamentos, frentista, onClose, onSave }: Props) {
   const [valor, setValor] = useState("");
   const [combustivel, setCombustivel] = useState<Combustivel>("gasolina");
   const [modalidade, setModalidade] = useState<"debito" | "credito">("debito");
@@ -50,6 +52,9 @@ export function LancamentoDialog({ tipo, precos, lancamentos, onClose, onSave }:
   }
   if (tipo === "despesas") {
     return <DespesaFuncionarioDialog precos={precos} onClose={onClose} onSave={onSave} />;
+  }
+  if (tipo === "descarregamento") {
+    return <DescarregamentoDialog responsavel={frentista} onClose={onClose} onSave={onSave} />;
   }
   if (tipo === "sangria") {
     return <SangriaDialog lancamentos={lancamentos} onClose={onClose} onSave={onSave} />;
