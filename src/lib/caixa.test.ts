@@ -143,8 +143,9 @@ describe("despesas de funcionários", () => {
     expect(l.tipoDespesaFuncionario).toBe("gasolina");
     expect(l.litros).toBe(10);
     expect(r.totalSaidas).toBeCloseTo(72.9);
-    expect(r.valorGasolina).toBe(0);
-    expect(r.total).toBe(0);
+    expect(r.valorGasolina).toBe(72.9);
+    expect(r.litrosGasolina).toBe(10);
+    expect(r.total).toBe(72.9);
   });
 });
 
@@ -168,8 +169,11 @@ describe("despesas gerais — Outros", () => {
     expect(combustiveis.every((l) => l.funcionario === undefined)).toBe(true);
     expect(combustiveis.map((l) => l.combustivel)).toEqual(["gasolina", "diesel"]);
     expect(resumo.totalSaidas).toBeCloseTo(146.8);
-    expect(resumo.valorGasolina).toBe(0);
-    expect(resumo.valorDiesel).toBe(0);
+    expect(resumo.valorGasolina).toBe(72.9);
+    expect(resumo.valorDiesel).toBe(73.9);
+    expect(resumo.litrosGasolina).toBe(10);
+    expect(resumo.litrosDiesel).toBe(10);
+    expect(resumo.total).toBe(146.8);
   });
 
   it("registra gasto de cozinha sem atribuir a nenhum funcionário", () => {
@@ -199,7 +203,7 @@ describe("valor total do caixa com sangria e diesel dinheiro", () => {
       { id: "v", tipo: "pix_manual", valor: 1538, combustivel: "gasolina", criadoEm: iso },
       { id: "des", tipo: "descontos", valor: 14, criadoEm: iso },
     ];
-    expect(calcularResumo(base, TURNO.precos).total).toBe(1524);
+    expect(calcularResumo(base, TURNO.precos).total).toBe(1552);
     const resultado = calcularResumo([
       ...base,
       { id: "s", tipo: "sangria", valor: 200, criadoEm: iso },
