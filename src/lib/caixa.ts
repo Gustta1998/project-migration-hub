@@ -77,6 +77,11 @@ export interface Lancamento {
   /** Sangria detalhada: valores efetivamente depositados de cada combustível. */
   sangriaGasolina?: number | undefined;
   sangriaDiesel?: number | undefined;
+  /** Aferição realizada na bomba com combustível integralmente devolvido ao tanque.
+   * Não é venda, despesa consumida, saída financeira nem perda de estoque.
+   * Os litros justificam o giro da bomba e o valor equivalente compensa a conferência.
+   */
+  afericaoDevolvida?: boolean | undefined;
   /** Medições físicas do tanque, registradas no recebimento de combustível. */
   descargaAntesCm?: number | undefined;
   descargaAntesLitros?: number | undefined;
@@ -136,10 +141,17 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
 
   for (const l of lancamentos) {
     const info = tipoInfo(l.tipo);
-    const slot = (r.porTipo[l.tipo] ??= { valor: 0, quantidade: 0 });
+    const chaveResumo = l.tipo === "despesas" && l.afericaoDevolvida
+      ? "afericoes" : l.tipo;
+    const slot = (r.porTipo[chaveResumo] ??= { valor: 0, quantidade: 0 });
     slot.valor += l.valor;
     slot.quantidade += 1;
 
+    if (l.tipo === "despesas" && l.afericaoDevolvida) {
+      // Somente para auditoria: aferição devolvida não gera venda,
+      // despesa ou consumo de estoque. A conferência das bombas trata à parte.
+      continue;
+    }
     if (info.categoria === "venda") {
       r.totalVendas += l.valor;
       if (l.tipo === "notas" || l.modalidade === "prazo") r.totalNaoRecebido += l.valor;
