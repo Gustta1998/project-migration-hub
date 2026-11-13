@@ -161,6 +161,18 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
     .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota")
     .reduce((v, l) => v + l.valor, 0);
   const descontosManuais = soma("descontos") - descontosNotas;
+  const despesasCombustivel = (combustivel: "gasolina" | "diesel") => {
+    const registros = sessao.lancamentos.filter(
+      l => l.tipo === "despesas" && l.combustivel === combustivel,
+    );
+    return {
+      valor: registros.reduce((s, l) => s + l.valor, 0),
+      litros: registros.reduce((s, l) => s + (l.litros ??
+        (sessao.abertura.precos[combustivel] > 0 ? l.valor / sessao.abertura.precos[combustivel] : 0)), 0),
+    };
+  };
+  const despesaGasolina = despesasCombustivel("gasolina");
+  const despesaDiesel = despesasCombustivel("diesel");
 
   return (
     <div className="posto-fechamento min-h-screen bg-background pb-10">
@@ -332,7 +344,11 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
             <Linha label="Descontos comerciais em notas (+ para bomba)" valor={"+ " + real(descontosNotas)} />
             <Linha label="Descontos manuais (+ para bomba)" valor={"+ " + real(descontosManuais)} />
             <Linha label="Sangrias" valor={"+ " + real(soma("sangria"))} />
-            <Linha label="Despesas" valor={"+ " + real(soma("despesas"))} />
+            <Linha label="Despesas (total, incluindo combustíveis)" valor={"+ " + real(soma("despesas"))} />
+            <div className="ml-3 border-l-2 border-border pl-3 text-xs text-muted-foreground">
+              <Linha label="↳ Gasolina em despesas (já incluída acima)" valor={real(despesaGasolina.valor) + " · " + formatLitros(despesaGasolina.litros)} />
+              <Linha label="↳ Diesel em despesas (já incluído acima)" valor={real(despesaDiesel.valor) + " · " + formatLitros(despesaDiesel.litros)} />
+            </div>
             <Linha label="Cartão Frota + Fit Card" valor={"+ " + real(soma("cartao_frota") + soma("fit_card"))} />
             <Linha label={trocoRetirado ? "Troco inicial (retirado)" : "Troco inicial (no caixa)"} valor={trocoRetirado ? real(0) : real(sessao.abertura.trocoInicial)} />
             <div className="mt-2 rounded-xl bg-primary-soft px-3 py-3">
