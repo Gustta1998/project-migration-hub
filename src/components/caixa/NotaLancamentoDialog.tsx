@@ -48,7 +48,7 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   const cliente = tipo === "cliente_outras_notas";
   const litros = parseNumeroBR(litrosTexto);
   const preco = precos[combustivel];
-  const valorEspecialDigitado = precoEspecialTexto.trim()
+  const valorEspecialDigitado = cliente && precoEspecialTexto.trim()
     ? parseNumeroBR(precoEspecialTexto) : preco;
   const precoEspecial = valorEspecialDigitado === null ? 0 : valorEspecialDigitado;
   const valorBomba = litros !== null && litros > 0 ? Math.round(litros * preco * 100) / 100 : 0;
@@ -156,16 +156,18 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
             </div>
           </div>
 
-          <label className="block">
-            <span className="eyebrow text-muted-foreground">Preço especial do cliente (R$/L) · opcional</span>
-            <input inputMode="decimal"
-              value={precoEspecialTexto}
-              placeholder={preco.toFixed(2).replace(".", ",")}
-              onChange={(e) => { setPrecoEspecialTexto(e.target.value.replace(/[^\d.,]/g, "")); setErro(""); }}
-              className={inputClass + " font-display font-bold num"}
-            />
-            <span className="mt-1 block text-xs text-muted-foreground">Deixe vazio para utilizar o preço normal da bomba.</span>
-          </label>
+          {cliente && (
+            <label className="block">
+              <span className="eyebrow text-muted-foreground">Preço especial do cliente (R$/L) · opcional</span>
+              <input inputMode="decimal"
+                value={precoEspecialTexto}
+                placeholder={preco.toFixed(2).replace(".", ",")}
+                onChange={(e) => { setPrecoEspecialTexto(e.target.value.replace(/[^\d.,]/g, "")); setErro(""); }}
+                className={inputClass + " font-display font-bold num"}
+              />
+              <span className="mt-1 block text-xs text-muted-foreground">Deixe vazio para utilizar o preço normal da bomba.</span>
+            </label>
+          )}
 
           <label className="block">
             <span className="eyebrow text-muted-foreground">{cliente ? "Nome do cliente" : "Nome do responsável"}</span>
