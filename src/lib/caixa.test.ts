@@ -26,15 +26,15 @@ describe("calcularResumo", () => {
     expect(r.litrosGasolina).toBe(66.255);
   });
 
-  it("descontos abatem o total e sangrias de gasolina somam nas vendas", () => {
+  it("descontos manuais e sangrias somam no total de conferência", () => {
     const extra: Lancamento[] = [
       ...LANCAMENTOS_INICIAIS,
       { id: "d", tipo: "descontos", valor: 10, criadoEm: "2026-11-05T01:00:00" },
       { id: "s", tipo: "sangria", valor: 100, criadoEm: "2026-11-05T01:00:00" },
     ];
     const r = calcularResumo(extra, TURNO.precos);
-    expect(r.total).toBe(573);
-    expect(r.totalVendas).toBe(583);
+    expect(r.total).toBe(593);
+    expect(r.totalVendas).toBe(593);
     expect(r.valorGasolina).toBe(583);
     expect(r.totalSaidas).toBe(100);
   });
@@ -204,8 +204,8 @@ describe("valor total do caixa com sangria e diesel dinheiro", () => {
       ...base,
       { id: "s", tipo: "sangria", valor: 200, criadoEm: iso },
     ], TURNO.precos);
-    expect(resultado.total).toBe(1724);
-    expect(resultado.totalVendas).toBe(1738);
+    expect(resultado.total).toBe(1752);
+    expect(resultado.totalVendas).toBe(1752);
     expect(resultado.valorGasolina).toBe(1738);
   });
 
