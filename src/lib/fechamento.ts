@@ -82,6 +82,11 @@ export function totalPrestacaoCombustivel(sessao: SessaoCaixa): {
   categorias.afericoes = arred(sessao.lancamentos
     .filter(l => l.tipo === "despesas" && l.afericaoDevolvida)
     .reduce((s, l) => s + l.valor, 0));
+  // Transferência passa na bomba, mas não representa venda ou dinheiro recebido.
+  // O valor equivalente justifica o giro somente nesta conferência.
+  categorias.transferencias = arred(sessao.lancamentos
+    .filter(l => l.tipo === "transferencia_combustivel")
+    .reduce((s, l) => s + l.valor, 0));
   const descontosDeNotas = arred(sessao.lancamentos
     .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota" &&
       !!l.notaVinculadaId && sessao.lancamentos.some(n => n.id === l.notaVinculadaId))
@@ -197,7 +202,7 @@ export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, conta
 
   const litrosLancados = { gasolina: 0, diesel: 0 };
   for (const l of sessao.lancamentos) {
-    if (l.combustivel && (l.tipo === "despesas" || l.tipo === "notas" ||
+    if (l.combustivel && (l.tipo === "despesas" || l.tipo === "transferencia_combustivel" || l.tipo === "notas" ||
       l.tipo === "cliente_outras_notas" ||
       l.tipo === "pix_maquininha" || l.tipo === "pix_manual" || l.tipo === "cartoes" ||
       l.tipo === "dinheiro" || l.tipo === "venda_diesel_dinheiro" || l.tipo === "cartao_frota" || l.tipo === "fit_card" ||
