@@ -1,5 +1,15 @@
 import type { Lancamento, NotaAutorizada, Precos } from "./caixa";
 
+/** Cadastro inicial de frentistas; futuramente alimentado pelo painel do gerente. */
+export const FRENTISTAS_INICIAIS = [
+  "GUSTAVO",
+  "ROAN",
+  "NAYZA",
+  "ROANNY",
+  "LUCIVANDO",
+  "TIAGO DIARISTA",
+] as const;
+
 export type CodigoTurno = "M" | "T1" | "MN";
 
 export const TURNOS: { codigo: CodigoTurno; label: string; descricao: string }[] = [
