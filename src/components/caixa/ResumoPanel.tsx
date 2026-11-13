@@ -17,6 +17,7 @@ import {
 import { CATEGORIA_TILE_INK, TIPO_ICON } from "./icons";
 import { litrosGasolinaSangrias, totaisSangriaCombustivel } from "@/lib/sangrias";
 import { apurarAfericoes } from "@/lib/afericoes";
+import { apurarTransferencias } from "@/lib/transferencias";
 
 interface Props {
   resumo: Resumo;
@@ -34,6 +35,7 @@ export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemov
     .reduce((s, l) => s + l.valor, 0);
   const descontosManuais = Math.max(0, resumo.totalDescontos - descontosComerciais);
   const afericoes = apurarAfericoes(lancamentos, precos);
+  const transferencias = apurarTransferencias(lancamentos, precos);
   return (
     <aside className="animate-rise flex flex-col gap-4 rounded-3xl bg-ink-panel p-4 text-ink-foreground shadow-lift sm:p-5 [animation-delay:90ms]">
       {/* Total */}
@@ -90,6 +92,13 @@ export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemov
           <span>Aferições devolvidas · Gasolina: <strong className="text-gasolina num">{formatLitros(afericoes.gasolina.litros)}</strong></span>
           <span>Diesel: <strong className="text-diesel num">{formatLitros(afericoes.diesel.litros)}</strong></span>
           <span>Sem saída definitiva do tanque</span>
+        </div>
+      )}
+      {(transferencias.gasolina.quantidade > 0 || transferencias.diesel.quantidade > 0) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-border bg-ink-2/40 px-3 py-2 text-xs text-ink-muted">
+          <span>Transferências para outros postos · Gasolina: <strong className="text-gasolina num">{formatLitros(transferencias.gasolina.litros)}</strong></span>
+          <span>Diesel: <strong className="text-diesel num">{formatLitros(transferencias.diesel.litros)}</strong></span>
+          <span>Saída definitiva do estoque · Sem venda</span>
         </div>
       )}
       <div className="grid min-h-0 gap-4 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
@@ -196,7 +205,7 @@ function Historico({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{l.afericaoDevolvida ? "Aferição devolvida" : info.label}</p>
                 <p className="truncate text-[11px] text-ink-muted">
-                  {l.combustivel && l.tipo !== "descarregamento" && (
+                  {l.combustivel && l.tipo !== "descarregamento" && l.tipo !== "transferencia_combustivel" && (
                     <>
                       <span
                         className={l.combustivel === "diesel" ? "text-diesel" : "text-gasolina"}
@@ -219,14 +228,15 @@ function Historico({
                     <span className="font-bold text-warning-foreground"> · Faturado</span>
                   )}
                   {l.tipo === "descarregamento" && <> · {l.responsavel} · Antes: {formatLitros(l.descargaAntesLitros ?? 0)} · Depois: {formatLitros(l.descargaDepoisLitros ?? 0)}</>}
+                  {l.tipo === "transferencia_combustivel" && <> · {l.combustivel === "diesel" ? "Diesel" : "Gasolina"} · Para: {l.postoDestino} · Responsável: {l.responsavel}</>}
                   {l.afericaoDevolvida && <> · Responsável: {l.responsavel || l.funcionario || "Não informado"} · Devolvida ao tanque</>}
                   {l.observacao && <> · {l.observacao}</>}
                 </p>
               </div>
               <p
-                className={`shrink-0 font-display text-base font-bold num ${l.afericaoDevolvida || l.tipo === "descarregamento" ? "text-primary-glow" : l.tipo === "sangria" ? "text-gasolina" : negativo ? "text-danger" : ""}`}
+                className={`shrink-0 font-display text-base font-bold num ${l.afericaoDevolvida || l.tipo === "descarregamento" || l.tipo === "transferencia_combustivel" ? "text-primary-glow" : l.tipo === "sangria" ? "text-gasolina" : negativo ? "text-danger" : ""}`}
               >
-                {l.afericaoDevolvida ? formatLitros(litrosDe(l, precos)) : l.tipo === "descarregamento" ? "+" + formatLitros(l.litros ?? 0) : (negativo ? "−" : "") + formatBRL(l.valor)}
+                {l.afericaoDevolvida ? formatLitros(litrosDe(l, precos)) : l.tipo === "transferencia_combustivel" ? "−" + formatLitros(litrosDe(l, precos)) : l.tipo === "descarregamento" ? "+" + formatLitros(l.litros ?? 0) : (negativo ? "−" : "") + formatBRL(l.valor)}
               </p>
               <button
                 type="button"
