@@ -26,7 +26,7 @@ interface Props {
 const normal = "rounded-xl border border-input bg-background px-3 py-2 font-semibold outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
 const real = (valor: number) => formatBRL(Math.round(valor * 100) / 100);
 const faixaTitulo = "flex items-center gap-2 rounded-t-2xl bg-hero px-4 py-3 text-ink-foreground";
-const categorias: { tipo: TipoLancamento; titulo: string }[] = [
+const categorias: { tipo: TipoLancamento | "afericoes"; titulo: string }[] = [
   { tipo: "sangria", titulo: "Sangrias" },
   { tipo: "pix_maquininha", titulo: "Pix maquininha" },
   { tipo: "pix_manual", titulo: "Pix manual" },
@@ -34,6 +34,7 @@ const categorias: { tipo: TipoLancamento; titulo: string }[] = [
   { tipo: "descontos", titulo: "Descontos" },
   { tipo: "notas", titulo: "Notas" },
   { tipo: "despesas", titulo: "Despesas" },
+  { tipo: "afericoes", titulo: "Aferições" },
 ];
 
 const nomeLancamento = (l: Lancamento) => {
@@ -104,10 +105,14 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
     return [...mapa.values()];
   }, [sessao.lancamentos]);
 
-  const listaTipo = (tipo: TipoLancamento) =>
+  const listaTipo = (tipo: TipoLancamento | "afericoes") =>
     sessao.lancamentos.filter(l => tipo === "notas"
       ? l.tipo === "notas" || l.tipo === "cliente_outras_notas"
-      : l.tipo === tipo);
+      : tipo === "afericoes"
+        ? l.tipo === "despesas" && l.afericaoDevolvida === true
+        : tipo === "despesas"
+          ? l.tipo === "despesas" && !l.afericaoDevolvida
+          : l.tipo === tipo);
 
   const registrarSangria = () => {
     const valor = parseNumeroBR(sangriaTexto);
@@ -157,14 +162,14 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
     }
   };
 
-  const soma = (tipo: TipoLancamento) => listaTipo(tipo).reduce((v, l) => v + l.valor, 0);
+  const soma = (tipo: TipoLancamento | "afericoes") => listaTipo(tipo).reduce((v, l) => v + l.valor, 0);
   const descontosNotas = sessao.lancamentos
     .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota")
     .reduce((v, l) => v + l.valor, 0);
   const descontosManuais = soma("descontos") - descontosNotas;
   const afericoes = apurarAfericoes(sessao.lancamentos, sessao.abertura.precos);
   const valorAfericoes = afericoes.gasolina.valorBomba + afericoes.diesel.valorBomba;
-  const valorDespesasComuns = soma("despesas") - valorAfericoes;
+  const valorDespesasComuns = soma("despesas");
   const despesasCombustivel = (combustivel: "gasolina" | "diesel") => {
     const registros = sessao.lancamentos.filter(
       l => l.tipo === "despesas" && !l.afericaoDevolvida && l.combustivel === combustivel,
