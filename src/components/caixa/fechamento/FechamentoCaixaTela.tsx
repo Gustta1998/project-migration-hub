@@ -10,6 +10,7 @@ import {
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
 import { totaisSangriaCombustivel } from "@/lib/sangrias";
 import { apurarAfericoes } from "@/lib/afericoes";
+import { apurarTransferencias } from "@/lib/transferencias";
 import {
   apurarFechamento, avaliarSaldoCaixa, conferirCaixa, giroMedido, leiturasVazias, validarLeiturasFinais,
   type FechamentoCaixa, type LeiturasTexto,
@@ -35,9 +36,19 @@ const categorias: { tipo: TipoLancamento | "afericoes"; titulo: string }[] = [
   { tipo: "notas", titulo: "Notas" },
   { tipo: "despesas", titulo: "Despesas" },
   { tipo: "afericoes", titulo: "Aferições" },
+  { tipo: "transferencia_combustivel", titulo: "Transferências" },
 ];
 
 const nomeLancamento = (l: Lancamento) => {
+  if (l.tipo === "transferencia_combustivel") {
+    return [
+      l.combustivel === "diesel" ? "Diesel" : "Gasolina",
+      formatLitros(l.litros ?? 0),
+      "Destino: " + (l.postoDestino || "Não informado"),
+      "Responsável: " + (l.responsavel || "Não informado"),
+      l.observacao,
+    ].filter(Boolean).join(" · ");
+  }
   if (l.tipo === "despesas") {
     // Identifique explicitamente a retirada para conferência e relatório do gerente.
     const origem = l.funcionario || (l.tipoDespesaGeral === "outros" ? "Outros" : "Despesa");
@@ -169,6 +180,8 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
   const descontosManuais = soma("descontos") - descontosNotas;
   const afericoes = apurarAfericoes(sessao.lancamentos, sessao.abertura.precos);
   const valorAfericoes = afericoes.gasolina.valorBomba + afericoes.diesel.valorBomba;
+  const transferencias = apurarTransferencias(sessao.lancamentos, sessao.abertura.precos);
+  const valorTransferencias = transferencias.gasolina.valorEquivalente + transferencias.diesel.valorEquivalente;
   const valorDespesasComuns = soma("despesas");
   const despesasCombustivel = (combustivel: "gasolina" | "diesel") => {
     const registros = sessao.lancamentos.filter(
@@ -205,7 +218,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
       <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5 sm:px-6">
         <section className="overflow-hidden rounded-2xl border border-slate-400/80 bg-card shadow-card ring-1 ring-slate-300/60">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1160px] table-fixed border-collapse text-sm [&_tr]:border-b [&_tr]:border-slate-400/70 [&_tbody_tr:last-child]:border-b-0">
+            <table className="w-full min-w-[1310px] table-fixed border-collapse text-sm [&_tr]:border-b [&_tr]:border-slate-400/70 [&_tbody_tr:last-child]:border-b-0">
               <thead>
                 <tr className="bg-hero text-ink-foreground">
                   {categorias.map(c => <th key={c.tipo} className="border-r-2 border-white/60 px-3 py-3 text-center font-bold last:border-r-0">{c.titulo}</th>)}
@@ -363,6 +376,11 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               <Linha label="↳ Aferição gasolina devolvida" valor={formatLitros(afericoes.gasolina.litros) + " · " + real(afericoes.gasolina.valorBomba)} />
               <Linha label="↳ Aferição diesel devolvida" valor={formatLitros(afericoes.diesel.litros) + " · " + real(afericoes.diesel.valorBomba)} />
             </div>
+            <Linha label="Transferências entre postos (justificativa das bombas, sem venda)" valor={"+ " + real(valorTransferencias)} />
+            <div className="ml-3 border-l-2 border-border pl-3 text-xs text-muted-foreground">
+              <Linha label="↳ Transferência gasolina (saída de estoque)" valor={formatLitros(transferencias.gasolina.litros) + " · " + real(transferencias.gasolina.valorEquivalente)} />
+              <Linha label="↳ Transferência diesel (saída de estoque)" valor={formatLitros(transferencias.diesel.litros) + " · " + real(transferencias.diesel.valorEquivalente)} />
+            </div>
             <Linha label="Cartão Frota + Fit Card" valor={"+ " + real(soma("cartao_frota") + soma("fit_card"))} />
             <Linha label={trocoRetirado ? "Troco inicial (retirado)" : "Troco inicial (no caixa)"} valor={trocoRetirado ? real(0) : real(sessao.abertura.trocoInicial)} />
             <div className="mt-2 rounded-xl bg-primary-soft px-3 py-3">
@@ -370,7 +388,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               <Linha label="Total da prestação de contas" valor={prestado === null ? "Aguardando leituras finais" : real(prestado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: somar sangrias, Pix, cartões, notas, despesas comuns e aferições devolvidas (apenas para justificar o giro das bombas), Cartão Frota e Fit Card. Descontos comerciais das notas e descontos manuais recompõem a venda ao preço da bomba. Os descontos manuais identificam o combustível para a conferência da litragem. O cliente deve apenas o valor líquido da nota. Produtos do Posto continuam separados.
+              Conferência: somar sangrias, Pix, cartões, notas, despesas comuns, aferições devolvidas e transferências para outros postos (estas duas últimas apenas justificam o giro das bombas, sem venda), Cartão Frota e Fit Card. Descontos comerciais das notas e descontos manuais recompõem a venda ao preço da bomba. Os descontos manuais identificam o combustível para a conferência da litragem. O cliente deve apenas o valor líquido da nota. Produtos do Posto continuam separados.
             </p>
           </Painel>
         </div>
