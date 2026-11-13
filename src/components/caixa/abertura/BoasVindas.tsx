@@ -1,4 +1,4 @@
-import { Fuel, LockKeyholeOpen } from "lucide-react";
+import { LockKeyholeOpen } from "lucide-react";
 
 export function BoasVindas({ posto, onAbrir }: { posto: string; onAbrir: () => void }) {
   return (
@@ -15,8 +15,15 @@ export function BoasVindas({ posto, onAbrir }: { posto: string; onAbrir: () => v
       </div>
 
       <main className="relative flex w-full max-w-xl flex-col items-center text-center">
-        <div className="animate-pop grid h-24 w-24 place-items-center rounded-3xl bg-total text-primary-foreground shadow-glow ring-1 ring-ink-foreground/15">
-          <Fuel className="h-11 w-11" strokeWidth={2.1} />
+        <div className="animate-pop grid h-28 w-28 place-items-center overflow-hidden rounded-3xl bg-total shadow-glow ring-1 ring-ink-foreground/15 sm:h-32 sm:w-32">
+          <img
+            src="/rede-de-posto-almeida.webp"
+            alt="Logo Rede de Posto Almeida"
+            width={160}
+            height={138}
+            className="h-full w-full object-contain"
+            decoding="async"
+          />
         </div>
 
         <p className="animate-rise eyebrow mt-7 text-ink-muted [animation-delay:80ms]">{posto}</p>
