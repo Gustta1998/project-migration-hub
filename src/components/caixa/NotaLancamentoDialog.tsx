@@ -27,6 +27,7 @@ interface Props {
 export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   const [combustivel, setCombustivel] = useState<Combustivel>("gasolina");
   const [litrosTexto, setLitrosTexto] = useState("");
+  const [precoEspecialTexto, setPrecoEspecialTexto] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [destino, setDestino] = useState<DestinoNota>("Nota Infra");
   const [outroDestino, setOutroDestino] = useState("");
@@ -36,6 +37,7 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   useEffect(() => {
     setCombustivel("gasolina");
     setLitrosTexto("");
+    setPrecoEspecialTexto("");
     setResponsavel("");
     setDestino("Nota Infra");
     setOutroDestino("");
@@ -46,7 +48,12 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
   const cliente = tipo === "cliente_outras_notas";
   const litros = parseNumeroBR(litrosTexto);
   const preco = precos[combustivel];
-  const total = litros !== null && litros > 0 ? Math.round(litros * preco * 100) / 100 : 0;
+  const valorEspecialDigitado = precoEspecialTexto.trim()
+    ? parseNumeroBR(precoEspecialTexto) : preco;
+  const precoEspecial = valorEspecialDigitado === null ? 0 : valorEspecialDigitado;
+  const valorBomba = litros !== null && litros > 0 ? Math.round(litros * preco * 100) / 100 : 0;
+  const total = litros !== null && litros > 0 ? Math.round(litros * precoEspecial * 100) / 100 : 0;
+  const descontoNota = Math.max(0, Math.round((valorBomba - total) * 100) / 100);
   const destinoFinal = destino === "Outros" ? outroDestino.trim() : destino;
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -57,7 +64,10 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
       return setErro("Informe uma quantidade de litros maior que zero.");
     }
     if (!Number.isFinite(preco) || preco <= 0 || total <= 0) {
-      return setErro("O preço do combustível na abertura do caixa precisa ser válido.");
+      return setErro("O preço do combustível na abertura do caixa e o preço especial precisam ser válidos.");
+    }
+    if (!Number.isFinite(precoEspecial) || precoEspecial <= 0 || precoEspecial > preco) {
+      return setErro("O preço especial deve ser maior que zero e não pode ultrapassar o preço da bomba.");
     }
     if (!cliente && !destinoFinal) return setErro("Informe o destino da nota.");
 
@@ -67,6 +77,9 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
       combustivel,
       litros,
       precoLitro: preco,
+      precoEspecial,
+      valorBomba,
+      descontoNota,
       responsavel: nome,
       destinoNota: cliente ? undefined : destinoFinal,
       modalidade: cliente ? pagamento : undefined,
@@ -144,6 +157,17 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
           </div>
 
           <label className="block">
+            <span className="eyebrow text-muted-foreground">Preço especial do cliente (R$/L) · opcional</span>
+            <input inputMode="decimal"
+              value={precoEspecialTexto}
+              placeholder={preco.toFixed(2).replace(".", ",")}
+              onChange={(e) => { setPrecoEspecialTexto(e.target.value.replace(/[^\d.,]/g, "")); setErro(""); }}
+              className={inputClass + " font-display font-bold num"}
+            />
+            <span className="mt-1 block text-xs text-muted-foreground">Deixe vazio para utilizar o preço normal da bomba.</span>
+          </label>
+
+          <label className="block">
             <span className="eyebrow text-muted-foreground">{cliente ? "Nome do cliente" : "Nome do responsável"}</span>
             <input
               required
@@ -208,8 +232,12 @@ export function NotaLancamentoDialog({ tipo, precos, onClose, onSave }: Props) {
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/40 px-4 py-3">
             <div>
-              <p className="eyebrow text-muted-foreground">Valor total calculado</p>
+              <p className="eyebrow text-muted-foreground">Valor da nota · cliente paga</p>
               <p className="font-display text-3xl font-bold num">{formatBRL(total)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Valor da bomba: {formatBRL(valorBomba)}</p>
+              {descontoNota > 0 && (
+                <p className="text-sm font-bold text-warning-foreground">Desconto automático: {formatBRL(descontoNota)}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 {litros !== null && litros > 0 ? formatLitros(litros) : "0,000 L"} · {formatDataBR(new Date())}
               </p>
