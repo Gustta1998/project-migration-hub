@@ -203,19 +203,19 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
       </header>
 
       <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5 sm:px-6">
-        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <section className="overflow-hidden rounded-2xl border border-slate-400/80 bg-card shadow-card ring-1 ring-slate-300/60">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1160px] table-fixed border-collapse text-sm">
+            <table className="w-full min-w-[1160px] table-fixed border-collapse text-sm [&_tr]:border-b [&_tr]:border-slate-400/70 [&_tbody_tr:last-child]:border-b-0">
               <thead>
                 <tr className="bg-hero text-ink-foreground">
-                  {categorias.map(c => <th key={c.tipo} className="border-r border-ink-border px-3 py-3 text-center font-bold last:border-r-0">{c.titulo}</th>)}
+                  {categorias.map(c => <th key={c.tipo} className="border-r-2 border-white/60 px-3 py-3 text-center font-bold last:border-r-0">{c.titulo}</th>)}
                   <th className="px-3 py-3 text-center font-bold">Total por categoria</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="align-top">
                   {categorias.map(c => (
-                    <td key={c.tipo} className="h-40 border-r border-b border-border p-2 align-top last:border-r-0">
+                    <td key={c.tipo} className="h-40 border-r-2 border-slate-400/80 p-2 align-top last:border-r-0">
                       <div className="max-h-44 space-y-1 overflow-y-auto">
                         {listaTipo(c.tipo).length === 0 && <p className="py-2 text-center text-muted-foreground">—</p>}
                         {listaTipo(c.tipo).map(l => (
@@ -227,7 +227,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
                       </div>
                     </td>
                   ))}
-                  <td className="border-b border-border bg-primary-soft p-3 text-center align-middle">
+                  <td className="bg-primary-soft p-3 text-center align-middle">
                     <p className="eyebrow text-muted-foreground">Vendas e notas</p>
                     <p className="mt-1 font-display text-2xl font-bold num">{real(resumo.totalVendas - soma("produto_posto"))}</p>
                     <p className="mt-2 text-xs text-muted-foreground">Produtos separados abaixo</p>
@@ -235,14 +235,14 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
                 </tr>
                 <tr className="bg-hero text-ink-foreground">
                   {categorias.map(c => (
-                    <td key={c.tipo} className="border-r border-ink-border px-2 py-2.5 text-center font-display font-bold num">
+                    <td key={c.tipo} className="border-r-2 border-white/60 px-2 py-2.5 text-center font-display font-bold num">
                       {real(soma(c.tipo))}
                     </td>
                   ))}
                   <td className="px-2 py-2.5 text-center font-bold">Resumo do turno</td>
                 </tr>
                 <tr className="text-xs text-muted-foreground">
-                  {categorias.map(c => <td key={c.tipo} className="border-r border-border px-2 py-2 text-center">
+                  {categorias.map(c => <td key={c.tipo} className="border-r-2 border-slate-400/80 px-2 py-2 text-center">
                     {listaTipo(c.tipo).length} lançamento(s)
                     {c.tipo === "cartoes" && (
                       <p className="mt-1">
@@ -259,16 +259,16 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
         </section>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+          <div className="relative rounded-2xl border border-slate-300 bg-card p-4 pl-6 shadow-card before:absolute before:bottom-4 before:left-3 before:top-4 before:w-1 before:rounded-full before:bg-blue-600">
             <p className="eyebrow text-muted-foreground">Sangrias de gasolina</p>
             <p className="mt-1 font-display text-2xl font-bold num">{real(totaisSangriaCombustivel(sessao.lancamentos).gasolina)}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+          <div className="relative rounded-2xl border border-slate-300 bg-card p-4 pl-6 shadow-card before:absolute before:bottom-4 before:left-3 before:top-4 before:w-1 before:rounded-full before:bg-blue-600">
             <p className="eyebrow text-muted-foreground">Sangrias de diesel</p>
             <p className="mt-1 font-display text-2xl font-bold num">{real(totaisSangriaCombustivel(sessao.lancamentos).diesel)}</p>
             <p className="mt-1 text-xs text-muted-foreground">Diesel em dinheiro vendido: {real(sessao.lancamentos.filter(l => l.tipo === "venda_diesel_dinheiro").reduce((s,l) => s + l.valor, 0))}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+          <div className="relative rounded-2xl border border-slate-300 bg-card p-4 pl-6 shadow-card before:absolute before:bottom-4 before:left-3 before:top-4 before:w-1 before:rounded-full before:bg-blue-600">
             <p className="eyebrow text-muted-foreground">Diesel ainda não depositado</p>
             <p className="mt-1 font-display text-2xl font-bold num">{real(totaisSangriaCombustivel(sessao.lancamentos).dieselNaoDepositado)}</p>
             <p className="mt-1 text-xs text-muted-foreground">Vendas de diesel em dinheiro acima do total das sangrias.</p>
