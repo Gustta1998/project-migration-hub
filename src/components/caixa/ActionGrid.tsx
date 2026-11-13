@@ -4,7 +4,7 @@ import { CATEGORIA_TILE, TIPO_ICON } from "./icons";
 
 const GRUPOS: { categorias: Categoria[]; titulo: string }[] = [
   { categorias: ["venda"], titulo: "Recebimentos" },
-  { categorias: ["desconto", "saida"], titulo: "Ajustes e saídas" },
+  { categorias: ["desconto", "saida", "estoque"], titulo: "Ajustes e saídas" },
 ];
 
 export function ActionGrid({ onSelect }: { onSelect: (tipo: TipoLancamento) => void }) {
