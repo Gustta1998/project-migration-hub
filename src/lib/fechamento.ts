@@ -73,9 +73,15 @@ export function totalPrestacaoCombustivel(sessao: SessaoCaixa): {
   const categorias: Record<string, number> = {};
   for (const tipo of tipos) {
     categorias[tipo] = arred(sessao.lancamentos
-      .filter(l => l.tipo === tipo)
+      .filter(l => l.tipo === tipo && !(tipo === "despesas" && l.afericaoDevolvida))
       .reduce((s, l) => s + l.valor, 0));
   }
+  // O totalizador da bomba avança durante uma aferição. Como o combustível
+  // volta ao tanque, os litros não são venda nem perda de estoque;
+  // o valor equivalente justifica o giro sem virar despesa ou cobrança.
+  categorias.afericoes = arred(sessao.lancamentos
+    .filter(l => l.tipo === "despesas" && l.afericaoDevolvida)
+    .reduce((s, l) => s + l.valor, 0));
   const descontosDeNotas = arred(sessao.lancamentos
     .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota" &&
       !!l.notaVinculadaId && sessao.lancamentos.some(n => n.id === l.notaVinculadaId))
