@@ -255,6 +255,7 @@ function Pdv({
         tipo={tipoAberto}
         precos={precos}
         lancamentos={lancamentos}
+        frentista={abertura.frentista}
         onClose={() => setTipoAberto(null)}
         onSave={(l) => {
           setLancamentos((ls) => [
