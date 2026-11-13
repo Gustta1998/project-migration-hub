@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calcularResumo, type Lancamento } from "./caixa";
 import { registrarLancamentoComDesconto, removerLancamentoVinculado } from "./descontos-notas";
-import { apurarFechamento, totalPrestacaoCombustivel } from "./fechamento";
+import { apurarFechamento, conferirCaixa, totalPrestacaoCombustivel } from "./fechamento";
 import type { SessaoCaixa } from "./abertura";
 
 const quando = "2026-11-12T20:00:00";
@@ -57,9 +57,9 @@ describe("nota com preço especial e desconto único vinculado", () => {
   it("preserva a opção Descontos manual como lançamento independente", () => {
     const manual: Lancamento = { id: "m", tipo: "descontos", valor: 5, criadoEm: quando };
     const sessao: SessaoCaixa = { ...base, lancamentos: [...registros, manual] };
-    expect(calcularResumo(sessao.lancamentos, precos).total).toBe(710);
-    expect(totalPrestacaoCombustivel(sessao).total).toBe(724);
-    expect(apurarFechamento(sessao, finais, true).saldo).toBe(-5);
+    expect(calcularResumo(sessao.lancamentos, precos).total).toBe(720);
+    expect(totalPrestacaoCombustivel(sessao).total).toBe(734);
+    expect(apurarFechamento(sessao, finais, true).saldo).toBe(5);
   });
 
   it("não cria desconto automático com preço normal", () => {
@@ -76,4 +76,42 @@ describe("nota com preço especial e desconto único vinculado", () => {
     expect(removerLancamentoVinculado(comTudo, "nota-1")).toEqual(outros);
     expect(removerLancamentoVinculado(comTudo, "nota-1:desconto")).toEqual(outros);
   });
+  it("soma desconto manual de gasolina no valor e litros equivalentes", () => {
+    const manual: Lancamento = {
+      id: "g", tipo: "descontos", valor: 14, combustivel: "gasolina",
+      precoLitro: 7.29, litros: 1.92, criadoEm: quando, observacao: "T. Amapá",
+    };
+    const r = calcularResumo([manual], precos);
+    expect(r.total).toBe(14);
+    expect(r.totalDescontos).toBe(14);
+    expect(r.valorGasolina).toBe(14);
+    expect(r.litrosGasolina).toBe(1.92);
+    expect(r.valorDiesel).toBe(0);
+    expect(totalPrestacaoCombustivel({ ...base, lancamentos: [manual] }).total).toBe(14);
+  });
+
+  it("soma desconto manual de diesel apenas à litragem de diesel", () => {
+    const manual: Lancamento = {
+      id: "d", tipo: "descontos", valor: 76.9, combustivel: "diesel",
+      precoLitro: 7.69, litros: 10, criadoEm: quando,
+    };
+    const r = calcularResumo([manual], precos);
+    expect(r.total).toBe(76.9);
+    expect(r.valorDiesel).toBe(76.9);
+    expect(r.litrosDiesel).toBe(10);
+    expect(r.litrosGasolina).toBe(0);
+    const sessao: SessaoCaixa = { ...base, lancamentos: [manual] };
+    expect(conferirCaixa(sessao, {gasolina: {bomba1: 0, bomba2: 0}, diesel: {bomba1: 10, bomba2: 0}}, 76.9, true).litrosLancados.diesel).toBe(10);
+  });
+
+  it("desconto automático de nota não acrescenta litros uma segunda vez", () => {
+    const r = calcularResumo(registros, precos);
+    expect(r.litrosGasolina).toBe(100);
+    expect(r.totalNaoRecebido).toBe(715);
+    expect(r.total).toBe(715);
+    const sessao: SessaoCaixa = { ...base, lancamentos: registros };
+    const res = conferirCaixa(sessao, finais, 729, true);
+    expect(res.litrosLancados.gasolina).toBe(100);
+  });
+
 });
