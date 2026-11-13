@@ -27,7 +27,8 @@ export type TipoLancamento =
   | "fit_card"
   | "notas"
   | "cliente_outras_notas"
-  | "descarregamento";
+  | "descarregamento"
+  | "transferencia_combustivel";
 
 export type Categoria = "venda" | "desconto" | "saida" | "estoque";
 
@@ -53,6 +54,7 @@ export const TIPOS: TipoInfo[] = [
   { id: "sangria", label: "Sangria", categoria: "saida", descricao: "Retirada do caixa" },
   { id: "despesas", label: "Despesas", categoria: "saida", descricao: "Gastos do turno" },
   { id: "descarregamento", label: "Descarregamento", categoria: "estoque", descricao: "Entrada de combustível no tanque" },
+  { id: "transferencia_combustivel", label: "Transferência de combustível", categoria: "estoque", descricao: "Saída para outro posto, sem venda" },
 ];
 
 export const tipoInfo = (id: TipoLancamento) => TIPOS.find((t) => t.id === id)!;
@@ -82,6 +84,8 @@ export interface Lancamento {
    * Os litros justificam o giro da bomba e o valor equivalente compensa a conferência.
    */
   afericaoDevolvida?: boolean | undefined;
+  /** Transferência entre postos: saída definitiva do estoque, sem faturamento. */
+  postoDestino?: string | undefined;
   /** Medições físicas do tanque, registradas no recebimento de combustível. */
   descargaAntesCm?: number | undefined;
   descargaAntesLitros?: number | undefined;
