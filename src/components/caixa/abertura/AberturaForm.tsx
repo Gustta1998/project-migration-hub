@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   FORM_VAZIO,
+  FRENTISTAS_INICIAIS,
   formatDataBR,
   TURNOS,
   validarAbertura,
@@ -109,15 +110,19 @@ export function AberturaForm({ posto, onVoltar, onConfirmar }: Props) {
           <SecaoTitulo icon={<UserRound className="h-4 w-4" />} titulo="Informações do frentista" />
           <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
             <Campo label="Nome do frentista" erro={erros.frentista} className="col-span-2">
-              <input
+              <select
                 name="frentista"
                 autoFocus
-                autoComplete="off"
-                placeholder="Digite o nome do responsável"
+                required
                 value={form.frentista}
                 onChange={(e) => set("frentista", e.target.value)}
                 className={`${inputBase} ${erros.frentista ? inputErro : inputOk}`}
-              />
+              >
+                <option value="" disabled>Selecione o frentista</option>
+                {FRENTISTAS_INICIAIS.map((nome) => (
+                  <option key={nome} value={nome}>{nome}</option>
+                ))}
+              </select>
             </Campo>
 
             <Campo label="Data" grupo>
