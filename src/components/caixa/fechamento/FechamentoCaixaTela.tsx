@@ -330,7 +330,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
             <Linha label="Cartões (débito e crédito)" valor={real(soma("cartoes"))} />
             <Linha label="Pix (maquininha e manual)" valor={real(soma("pix_maquininha") + soma("pix_manual"))} />
             <Linha label="Descontos comerciais em notas (+ para bomba)" valor={"+ " + real(descontosNotas)} />
-            <Linha label="Descontos manuais" valor={"− " + real(descontosManuais)} />
+            <Linha label="Descontos manuais (+ para bomba)" valor={"+ " + real(descontosManuais)} />
             <Linha label="Sangrias" valor={"+ " + real(soma("sangria"))} />
             <Linha label="Despesas" valor={"+ " + real(soma("despesas"))} />
             <Linha label="Cartão Frota + Fit Card" valor={"+ " + real(soma("cartao_frota") + soma("fit_card"))} />
@@ -340,7 +340,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               <Linha label="Total da prestação de contas" valor={prestado === null ? "Aguardando leituras finais" : real(prestado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: somar sangrias, Pix, cartões, notas, despesas, Cartão Frota e Fit Card. Descontos comerciais das notas recompõem a venda ao preço da bomba; descontos manuais são abatidos. O cliente deve apenas o valor líquido da nota. Produtos do Posto continuam separados.
+              Conferência: somar sangrias, Pix, cartões, notas, despesas, Cartão Frota e Fit Card. Descontos comerciais das notas e descontos manuais recompõem a venda ao preço da bomba. Os descontos manuais identificam o combustível para a conferência da litragem. O cliente deve apenas o valor líquido da nota. Produtos do Posto continuam separados.
             </p>
           </Painel>
         </div>
