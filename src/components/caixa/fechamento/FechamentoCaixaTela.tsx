@@ -163,7 +163,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
   const descontosManuais = soma("descontos") - descontosNotas;
 
   return (
-    <div className="min-h-screen bg-background pb-10">
+    <div className="posto-fechamento min-h-screen bg-background pb-10">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
