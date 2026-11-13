@@ -157,6 +157,10 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
   };
 
   const soma = (tipo: TipoLancamento) => listaTipo(tipo).reduce((v, l) => v + l.valor, 0);
+  const descontosNotas = sessao.lancamentos
+    .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota")
+    .reduce((v, l) => v + l.valor, 0);
+  const descontosManuais = soma("descontos") - descontosNotas;
 
   return (
     <div className="min-h-screen bg-background pb-10">
@@ -325,7 +329,8 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
             <Linha label="Notas (incluídas nas vendas)" valor={real(soma("notas"))} />
             <Linha label="Cartões (débito e crédito)" valor={real(soma("cartoes"))} />
             <Linha label="Pix (maquininha e manual)" valor={real(soma("pix_maquininha") + soma("pix_manual"))} />
-            <Linha label="Descontos" valor={"− " + real(soma("descontos"))} />
+            <Linha label="Descontos comerciais em notas (+ para bomba)" valor={"+ " + real(descontosNotas)} />
+            <Linha label="Descontos manuais" valor={"− " + real(descontosManuais)} />
             <Linha label="Sangrias" valor={"+ " + real(soma("sangria"))} />
             <Linha label="Despesas" valor={"+ " + real(soma("despesas"))} />
             <Linha label="Cartão Frota + Fit Card" valor={"+ " + real(soma("cartao_frota") + soma("fit_card"))} />
@@ -335,7 +340,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               <Linha label="Total da prestação de contas" valor={prestado === null ? "Aguardando leituras finais" : real(prestado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: somar sangrias (dinheiro do combustível depositado), Pix, cartões, notas, despesas, Cartão Frota e Fit Card; subtrair descontos. Comparar com gasolina + diesel apurados nas bombas. Produtos do Posto ficam separados. O troco não retirado aparece nos dois lados, sem mudar a diferença.
+              Conferência: somar sangrias, Pix, cartões, notas, despesas, Cartão Frota e Fit Card. Descontos comerciais das notas recompõem a venda ao preço da bomba; descontos manuais são abatidos. O cliente deve apenas o valor líquido da nota. Produtos do Posto continuam separados.
             </p>
           </Painel>
         </div>
