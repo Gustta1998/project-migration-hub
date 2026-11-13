@@ -149,6 +149,13 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
       }
     } else if (info.categoria === "desconto") {
       r.totalDescontos += l.valor;
+      // Desconto manual equivale à parcela da venda ao preço da bomba
+      // ainda não coberta por um lançamento comum. O desconto gerado
+      // junto à nota NÃO soma litros: a nota já registrou todos eles.
+      if (l.origemDesconto !== "nota" && l.combustivel) {
+        if (l.combustivel === "gasolina") r.valorGasolina += l.valor;
+        else r.valorDiesel += l.valor;
+      }
     } else {
       r.totalSaidas += l.valor;
     }
@@ -166,6 +173,17 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
   r.litrosDiesel = round(lancamentos
     .filter((l) => tipoInfo(l.tipo).categoria === "venda" && l.combustivel === "diesel")
     .reduce((acc, l) => acc + litrosExatos(l), 0), 3);
+  // Litros equivalentes dos descontos manuais: nota com preço especial
+  // não entra aqui, pois seus litros já foram registrados pela nota.
+  for (const l of lancamentos) {
+    if (l.tipo !== "descontos" || l.origemDesconto === "nota" || !l.combustivel) continue;
+    const preco = l.precoLitro && l.precoLitro > 0 ? l.precoLitro : precos[l.combustivel];
+    const litros = preco > 0 ? l.valor / preco : 0;
+    if (l.combustivel === "gasolina") r.litrosGasolina += litros;
+    else r.litrosDiesel += litros;
+  }
+  r.litrosGasolina = round(r.litrosGasolina, 3);
+  r.litrosDiesel = round(r.litrosDiesel, 3);
   // Sangria é depósito de combustível vendido em dinheiro.
   // A parte de gasolina compõe a litragem do painel; diesel já foi
   // contabilizado em Venda Diesel Dinheiro (não deve ser duplicado).
@@ -180,12 +198,14 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
   // venda_diesel_dinheiro em totalVendas; por isso somente o restante
   // (gasolina das sangrias) é acrescentado para evitar contagem dupla.
   r.totalVendas = round(r.totalVendas + sangriasPorCombustivel.gasolina);
-  // Desconto gerado junto de nota: a venda já está no valor líquido
-  // cobrado do cliente. Não descontar novamente do total do caixa.
+  // Descontos manuais recompõem o valor equivalente à bomba, como os
+  // descontos de notas. Notas com desconto já registram o valor líquido
+  // da cobrança e seu desconto não pode virar uma segunda venda.
   const descontosManuais = lancamentos
     .filter(l => l.tipo === "descontos" && l.origemDesconto !== "nota")
     .reduce((s, l) => s + l.valor, 0);
-  r.total = round(r.totalVendas - descontosManuais);
+  r.totalVendas = round(r.totalVendas + descontosManuais);
+  r.total = round(r.totalVendas);
   return r;
 }
 
