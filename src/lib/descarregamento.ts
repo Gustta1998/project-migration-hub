@@ -18,7 +18,7 @@ export function calcularDescarregamento(
   const numeros = [antesCmTexto, antesLitrosTexto, depoisCmTexto, depoisLitrosTexto]
     .map(parseNumeroBR);
   if (numeros.some((v) => v === null || !Number.isFinite(v) || v < 0)) return null;
-  const [antesCm, antesLitros, depoisCm, depoisLitros] = numeros as number[];
+  const [antesCm, antesLitros, depoisCm, depoisLitros] = numeros as [number, number, number, number];
   if (depoisCm <= antesCm || depoisLitros <= antesLitros) return null;
   return {
     antesCm,
