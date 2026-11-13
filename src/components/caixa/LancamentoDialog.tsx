@@ -60,20 +60,22 @@ export function LancamentoDialog({ tipo, precos, lancamentos, onClose, onSave }:
   const info = tipoInfo(tipo);
   const Icon = TIPO_ICON[tipo];
   const isVenda = info.categoria === "venda";
+  const isDesconto = tipo === "descontos";
   const num = Number(valor.replace(/\./g, "").replace(",", ".")) || 0;
   const combustivelSelecionado = tipo === "venda_diesel_dinheiro" ? "diesel" : combustivel;
-  const litros = isVenda ? num / precos[combustivelSelecionado] : 0;
+  const litros = (isVenda || isDesconto) && precos[combustivelSelecionado] > 0
+    ? num / precos[combustivelSelecionado] : 0;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (num <= 0) return;
+    if (num <= 0 || (isDesconto && precos[combustivelSelecionado] <= 0)) return;
     onSave({
       tipo,
       valor: Math.round(num * 100) / 100,
-      combustivel: isVenda ? combustivelSelecionado : undefined,
+      combustivel: isVenda || isDesconto ? combustivelSelecionado : undefined,
       modalidade: tipo === "cartoes" ? modalidade : isVenda ? "avista" : undefined,
-      litros: tipo === "venda_diesel_dinheiro" ? Math.round(litros * 1000) / 1000 : undefined,
-      precoLitro: tipo === "venda_diesel_dinheiro" ? precos.diesel : undefined,
+      litros: tipo === "venda_diesel_dinheiro" || isDesconto ? Math.round(litros * 1000) / 1000 : undefined,
+      precoLitro: tipo === "venda_diesel_dinheiro" || isDesconto ? precos[combustivelSelecionado] : undefined,
       observacao: obs.trim() || undefined,
     });
   };
@@ -109,7 +111,7 @@ export function LancamentoDialog({ tipo, precos, lancamentos, onClose, onSave }:
             </div>
           </label>
 
-          {isVenda && tipo !== "venda_diesel_dinheiro" && (
+          {(isVenda || isDesconto) && tipo !== "venda_diesel_dinheiro" && (
             <div>
               <span className="eyebrow text-muted-foreground">Combustível</span>
               <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -167,13 +169,19 @@ export function LancamentoDialog({ tipo, precos, lancamentos, onClose, onSave }:
             </div>
           )}
 
+          {isDesconto && (
+            <p className="rounded-xl bg-primary-soft px-3 py-2 text-xs font-semibold text-primary">
+              Desconto para conferência: será somado ao valor e aos litros equivalentes do combustível selecionado.
+            </p>
+          )}
+
           {!isVenda && (
             <label className="block">
               <span className="eyebrow text-muted-foreground">Observação</span>
               <input
                 value={obs}
                 onChange={(e) => setObs(e.target.value)}
-                placeholder="Ex.: troca de óleo, retirada parcial…"
+                placeholder={isDesconto ? "Ex.: desconto T. Amapá" : "Ex.: troca de óleo, retirada parcial…"}
                 className="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               />
             </label>
@@ -181,7 +189,7 @@ export function LancamentoDialog({ tipo, precos, lancamentos, onClose, onSave }:
 
           <div className="flex items-center justify-between gap-3 pt-1">
             <p className="text-sm text-muted-foreground">
-              {isVenda && num > 0 ? (
+              {(isVenda || isDesconto) && num > 0 ? (
                 <>
                   ≈ <b className="text-foreground num">{formatLitros(litros)}</b>
                 </>
