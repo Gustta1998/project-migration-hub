@@ -26,9 +26,10 @@ export type TipoLancamento =
   | "cartao_frota"
   | "fit_card"
   | "notas"
-  | "cliente_outras_notas";
+  | "cliente_outras_notas"
+  | "descarregamento";
 
-export type Categoria = "venda" | "desconto" | "saida";
+export type Categoria = "venda" | "desconto" | "saida" | "estoque";
 
 export interface TipoInfo {
   id: TipoLancamento;
@@ -51,6 +52,7 @@ export const TIPOS: TipoInfo[] = [
   { id: "descontos", label: "Descontos", categoria: "desconto", descricao: "Complemento da venda para conferir as bombas" },
   { id: "sangria", label: "Sangria", categoria: "saida", descricao: "Retirada do caixa" },
   { id: "despesas", label: "Despesas", categoria: "saida", descricao: "Gastos do turno" },
+  { id: "descarregamento", label: "Descarregamento", categoria: "estoque", descricao: "Entrada de combustível no tanque" },
 ];
 
 export const tipoInfo = (id: TipoLancamento) => TIPOS.find((t) => t.id === id)!;
@@ -75,6 +77,11 @@ export interface Lancamento {
   /** Sangria detalhada: valores efetivamente depositados de cada combustível. */
   sangriaGasolina?: number | undefined;
   sangriaDiesel?: number | undefined;
+  /** Medições físicas do tanque, registradas no recebimento de combustível. */
+  descargaAntesCm?: number | undefined;
+  descargaAntesLitros?: number | undefined;
+  descargaDepoisCm?: number | undefined;
+  descargaDepoisLitros?: number | undefined;
   /** Identificação de item do catálogo e quantidade vendida. */
   produtoId?: string | undefined;
   produtoNome?: string | undefined;
@@ -156,9 +163,10 @@ export function calcularResumo(lancamentos: Lancamento[], precos: Precos): Resum
         if (l.combustivel === "gasolina") r.valorGasolina += l.valor;
         else r.valorDiesel += l.valor;
       }
-    } else {
+    } else if (info.categoria === "saida") {
       r.totalSaidas += l.valor;
     }
+    // Estoque não é uma operação financeira e não deve alterar o caixa.
   }
 
   const litrosExatos = (l: Lancamento) =>
