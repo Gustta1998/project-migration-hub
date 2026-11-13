@@ -46,7 +46,7 @@ export function ResumoPanel({ resumo, lancamentos, precos, trocoInicial, onRemov
             Vendas <b className="num text-ink-foreground">{formatBRL(resumo.totalVendas)}</b>
           </span>
           <span>
-            Descontos manuais <b className="num text-ink-foreground">−{formatBRL(descontosManuais)}</b>
+            Descontos manuais <b className="num text-ink-foreground">+{formatBRL(descontosManuais)}</b>
           </span>
           <span>
             Descontos em notas <b className="num text-ink-foreground">{formatBRL(descontosComerciais)}</b>
