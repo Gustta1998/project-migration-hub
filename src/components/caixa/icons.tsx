@@ -31,6 +31,7 @@ export const TIPO_ICON: Record<TipoLancamento, LucideIcon> = {
   sangria: HandCoins,
   despesas: Receipt,
   descarregamento: Fuel,
+  transferencia_combustivel: Truck,
 };
 
 /** Icon tile tone per category (light surfaces). */
