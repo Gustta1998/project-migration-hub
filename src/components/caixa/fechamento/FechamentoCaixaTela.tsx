@@ -9,6 +9,7 @@ import {
 } from "@/lib/caixa";
 import { parseNumeroBR, turnoInfo, type SessaoCaixa } from "@/lib/abertura";
 import { totaisSangriaCombustivel } from "@/lib/sangrias";
+import { apurarAfericoes } from "@/lib/afericoes";
 import {
   apurarFechamento, avaliarSaldoCaixa, conferirCaixa, giroMedido, leiturasVazias, validarLeiturasFinais,
   type FechamentoCaixa, type LeiturasTexto,
@@ -46,7 +47,7 @@ const nomeLancamento = (l: Lancamento) => {
       : l.combustivel === "gasolina" ? "Gasolina"
       : l.combustivel === "diesel" ? "Diesel" : "";
     const detalhes = l.descricaoDespesa || l.observacao || "";
-    const partes = [origem, natureza];
+    const partes = [origem, l.afericaoDevolvida ? "AFERIÇÃO · DEVOLVIDA AO TANQUE" : "", natureza];
     if (l.combustivel && typeof l.litros === "number") partes.push(formatLitros(l.litros));
     if (detalhes && !detalhes.startsWith(origem + " · ")) partes.push(detalhes);
     else if (detalhes.startsWith(origem + " · ")) {
@@ -161,9 +162,12 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
     .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota")
     .reduce((v, l) => v + l.valor, 0);
   const descontosManuais = soma("descontos") - descontosNotas;
+  const afericoes = apurarAfericoes(sessao.lancamentos, sessao.abertura.precos);
+  const valorAfericoes = afericoes.gasolina.valorBomba + afericoes.diesel.valorBomba;
+  const valorDespesasComuns = soma("despesas") - valorAfericoes;
   const despesasCombustivel = (combustivel: "gasolina" | "diesel") => {
     const registros = sessao.lancamentos.filter(
-      l => l.tipo === "despesas" && l.combustivel === combustivel,
+      l => l.tipo === "despesas" && !l.afericaoDevolvida && l.combustivel === combustivel,
     );
     return {
       valor: registros.reduce((s, l) => s + l.valor, 0),
@@ -344,10 +348,15 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
             <Linha label="Descontos comerciais em notas (+ para bomba)" valor={"+ " + real(descontosNotas)} />
             <Linha label="Descontos manuais (+ para bomba)" valor={"+ " + real(descontosManuais)} />
             <Linha label="Sangrias" valor={"+ " + real(soma("sangria"))} />
-            <Linha label="Despesas (total, incluindo combustíveis)" valor={"+ " + real(soma("despesas"))} />
+            <Linha label="Despesas comuns (incluindo combustíveis)" valor={"+ " + real(valorDespesasComuns)} />
             <div className="ml-3 border-l-2 border-border pl-3 text-xs text-muted-foreground">
               <Linha label="↳ Gasolina em despesas (já incluída acima)" valor={real(despesaGasolina.valor) + " · " + formatLitros(despesaGasolina.litros)} />
               <Linha label="↳ Diesel em despesas (já incluído acima)" valor={real(despesaDiesel.valor) + " · " + formatLitros(despesaDiesel.litros)} />
+            </div>
+            <Linha label="Aferições devolvidas (justificativa das bombas, sem venda)" valor={"+ " + real(valorAfericoes)} />
+            <div className="ml-3 border-l-2 border-border pl-3 text-xs text-muted-foreground">
+              <Linha label="↳ Aferição gasolina devolvida" valor={formatLitros(afericoes.gasolina.litros) + " · " + real(afericoes.gasolina.valorBomba)} />
+              <Linha label="↳ Aferição diesel devolvida" valor={formatLitros(afericoes.diesel.litros) + " · " + real(afericoes.diesel.valorBomba)} />
             </div>
             <Linha label="Cartão Frota + Fit Card" valor={"+ " + real(soma("cartao_frota") + soma("fit_card"))} />
             <Linha label={trocoRetirado ? "Troco inicial (retirado)" : "Troco inicial (no caixa)"} valor={trocoRetirado ? real(0) : real(sessao.abertura.trocoInicial)} />
@@ -356,7 +365,7 @@ export function FechamentoCaixaTela({ sessao, trocoRetirado, onVoltar, onConfirm
               <Linha label="Total da prestação de contas" valor={prestado === null ? "Aguardando leituras finais" : real(prestado)} forte />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Conferência: somar sangrias, Pix, cartões, notas, despesas, Cartão Frota e Fit Card. Descontos comerciais das notas e descontos manuais recompõem a venda ao preço da bomba. Os descontos manuais identificam o combustível para a conferência da litragem. O cliente deve apenas o valor líquido da nota. Produtos do Posto continuam separados.
+              Conferência: somar sangrias, Pix, cartões, notas, despesas comuns e aferições devolvidas (apenas para justificar o giro das bombas), Cartão Frota e Fit Card. Descontos comerciais das notas e descontos manuais recompõem a venda ao preço da bomba. Os descontos manuais identificam o combustível para a conferência da litragem. O cliente deve apenas o valor líquido da nota. Produtos do Posto continuam separados.
             </p>
           </Painel>
         </div>
