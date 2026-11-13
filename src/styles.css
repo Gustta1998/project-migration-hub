@@ -276,3 +276,40 @@
     transform: scaleX(1);
   }
 }
+
+/*
+ * Posto Almeida — campos de entrada padronizados.
+ * Preserva tamanhos, arredondamentos, botões e seleção de combustíveis.
+ * Usa o mesmo azul da prévia aprovada, inclusive sem foco.
+ */
+:where(form, .posto-fechamento) :is(input, select, textarea):not(.bg-transparent):not(.border-danger) {
+  border-color: oklch(0.59 0.18 255);
+  box-shadow: 0 0 0 1px oklch(0.59 0.18 255 / 85%);
+  color: var(--foreground);
+}
+:where(form, .posto-fechamento) :is(input, select, textarea):not(.bg-transparent):not(.border-danger):focus {
+  border-color: oklch(0.47 0.19 255);
+  box-shadow: 0 0 0 3px oklch(0.61 0.17 255 / 24%);
+}
+:where(form, .posto-fechamento) :is(input, textarea)::placeholder {
+  color: oklch(0.46 0.035 258);
+  opacity: 1;
+}
+/* Valores monetários ficam dentro de um invólucro com prefixo R$. */
+:where(form, .posto-fechamento) .border-input:has(> input.bg-transparent):not(.border-danger) {
+  border-color: oklch(0.59 0.18 255);
+  box-shadow: 0 0 0 1px oklch(0.59 0.18 255 / 85%);
+}
+:where(form, .posto-fechamento) .border-input:has(> input.bg-transparent):focus-within {
+  border-color: oklch(0.47 0.19 255);
+  box-shadow: 0 0 0 3px oklch(0.61 0.17 255 / 24%);
+}
+/* Caixa de preço calculado: somente leitura, mas com a mesma borda. */
+:where(form, .posto-fechamento) div.border-input:not(:has(input)) {
+  border-color: oklch(0.59 0.18 255);
+  box-shadow: 0 0 0 1px oklch(0.59 0.18 255 / 85%);
+}
+/* Legibilidade dos títulos dos campos em fundos claros. */
+:where(form, .posto-fechamento) .eyebrow.text-muted-foreground {
+  color: oklch(0.25 0.07 262);
+}
