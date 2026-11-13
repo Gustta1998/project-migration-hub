@@ -21,6 +21,7 @@ import { DespesaFuncionarioDialog } from "./DespesaFuncionarioDialog";
 import { ProdutoPostoDialog } from "./ProdutoPostoDialog";
 import { SangriaDialog } from "./SangriaDialog";
 import { DescarregamentoDialog } from "./DescarregamentoDialog";
+import { TransferenciaCombustivelDialog } from "./TransferenciaCombustivelDialog";
 
 interface Props {
   tipo: TipoLancamento | null;
@@ -55,6 +56,9 @@ export function LancamentoDialog({ tipo, precos, lancamentos, frentista, onClose
   }
   if (tipo === "descarregamento") {
     return <DescarregamentoDialog responsavel={frentista} onClose={onClose} onSave={onSave} />;
+  }
+  if (tipo === "transferencia_combustivel") {
+    return <TransferenciaCombustivelDialog precos={precos} frentista={frentista} onClose={onClose} onSave={onSave} />;
   }
   if (tipo === "sangria") {
     return <SangriaDialog lancamentos={lancamentos} onClose={onClose} onSave={onSave} />;
