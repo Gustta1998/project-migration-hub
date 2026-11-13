@@ -173,7 +173,7 @@ function Historico({
         {lista.map((l) => {
           const info = tipoInfo(l.tipo);
           const Icon = TIPO_ICON[l.tipo];
-          const negativo = info.categoria !== "venda";
+          const negativo = info.categoria !== "venda" && l.tipo !== "sangria";
           return (
             <li
               key={l.id}
@@ -213,7 +213,7 @@ function Historico({
                 </p>
               </div>
               <p
-                className={`shrink-0 font-display text-base font-bold num ${negativo ? "text-danger" : ""}`}
+                className={`shrink-0 font-display text-base font-bold num ${l.tipo === "sangria" ? "text-gasolina" : negativo ? "text-danger" : ""}`}
               >
                 {negativo ? "−" : ""}
                 {formatBRL(l.valor)}
