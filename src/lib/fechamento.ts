@@ -80,14 +80,11 @@ export function totalPrestacaoCombustivel(sessao: SessaoCaixa): {
     .filter(l => l.tipo === "descontos" && l.origemDesconto === "nota" &&
       !!l.notaVinculadaId && sessao.lancamentos.some(n => n.id === l.notaVinculadaId))
     .reduce((s, l) => s + l.valor, 0));
-  // A nota guarda o valor que o cliente deve. Seu desconto comercial recompõe
-  // a venda ao preço da bomba na CONFERÊNCIA, não nas contas a receber.
-  // Descontos manuais mantêm o abatimento definido anteriormente.
-  const totalBase = Object.entries(categorias).reduce(
-    (s, [tipo, valor]) => s + (tipo === "descontos" ? -valor : valor), 0,
-  );
+  // Tanto os descontos manuais quanto os vinculados às notas recompõem
+  // o valor do combustível medido pelas bombas. O desconto de nota não
+  // altera o valor líquido que o cliente deve nem duplica seus litros.
   return {
-    total: arred(totalBase + 2 * descontosDeNotas),
+    total: arred(Object.values(categorias).reduce((s, valor) => s + valor, 0)),
     categorias,
     descontosDeNotas,
   };
@@ -197,7 +194,8 @@ export function conferirCaixa(sessao: SessaoCaixa, finais: LeiturasBombas, conta
     if (l.combustivel && (l.tipo === "despesas" || l.tipo === "notas" ||
       l.tipo === "cliente_outras_notas" ||
       l.tipo === "pix_maquininha" || l.tipo === "pix_manual" || l.tipo === "cartoes" ||
-      l.tipo === "dinheiro" || l.tipo === "venda_diesel_dinheiro" || l.tipo === "cartao_frota" || l.tipo === "fit_card")) {
+      l.tipo === "dinheiro" || l.tipo === "venda_diesel_dinheiro" || l.tipo === "cartao_frota" || l.tipo === "fit_card" ||
+      (l.tipo === "descontos" && l.origemDesconto !== "nota"))) {
       litrosLancados[l.combustivel] += litrosDe(l, sessao.abertura.precos);
     }
   }
